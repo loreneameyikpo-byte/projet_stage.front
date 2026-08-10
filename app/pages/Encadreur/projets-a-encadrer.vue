@@ -5,38 +5,50 @@ definePageMeta({ layout: 'dashboard', middleware: 'role' })
 useRoute().meta.roles = ['encadreur']
 
 const { apiFetch } = useApi()
-const authStore = useAuthStore()
 
-interface ProjetRecent {
+interface Projet {
   id: string
-  etudiant: string
   titre: string
   statut: string
-  derniere_version: number | null
-}
-interface StatsDashboard {
-  specialite: string | null
-  total_projets: number
-  en_attente: number
-  valides: number
-  soutenances_a_venir: number
-  projets_recents: ProjetRecent[]
+  etudiant: { nom: string; prenom: string; promotion?: string | null }
+  derniere_version?: { date_depot: string } | null
 }
 
-const { data: stats } = await useAsyncData('encadreur-dashboard', () =>
-  apiFetch<StatsDashboard>('/stats-encadreur/dashboard')
-)
+const { data } = await useAsyncData('projets-a-encadrer', () => apiFetch<{ projets: Projet[] }>('/projets'))
 
-const cartes = computed(() => [
-  { label: 'Projets encadrés', valeur: stats.value?.total_projets ?? 0, couleur: 'bg-secondary/10 text-secondary', icone: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
-  { label: 'En attente de revue', valeur: stats.value?.en_attente ?? 0, couleur: 'bg-warning/10 text-warning', icone: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' },
-  { label: 'Projets validés', valeur: stats.value?.valides ?? 0, couleur: 'bg-accent/10 text-accent', icone: 'M5 13l4 4L19 7' },
-  { label: 'Soutenances à venir', valeur: stats.value?.soutenances_a_venir ?? 0, couleur: 'bg-secondary/10 text-secondary', icone: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' },
-])
+const onglets = [
+  { valeur: 'tous', label: 'Tous' },
+  { valeur: 'en_attente', label: 'En attente' },
+  { valeur: 'corrections', label: 'Corrections' },
+  { valeur: 'valide', label: 'Validés' },
+  { valeur: 'presentation_planifiee', label: 'Planifiés' },
+  { valeur: 'presente', label: 'Présentés' },
+]
+const ongletActif = ref('tous')
+const recherche = ref('')
+
+const estMonte = ref(false)
+onMounted(() => {
+  requestAnimationFrame(() => { estMonte.value = true })
+})
+
+function compte(statut: string) {
+  if (statut === 'tous') return data.value?.projets.length ?? 0
+  return (data.value?.projets ?? []).filter((p) => p.statut === statut).length
+}
+
+const projetsFiltres = computed(() => {
+  const terme = recherche.value.toLowerCase()
+  return (data.value?.projets ?? []).filter((p) => {
+    const correspondStatut = ongletActif.value === 'tous' || p.statut === ongletActif.value
+    const correspondTerme = `${p.titre} ${p.etudiant.prenom} ${p.etudiant.nom}`.toLowerCase().includes(terme)
+    return correspondStatut && correspondTerme
+  })
+})
 
 const badgesStatuts: Record<string, { label: string; classe: string }> = {
-  en_attente_validation: { label: 'En attente', classe: 'bg-warning/10 text-warning' },
-  corrections_demandees: { label: 'Corrections demandées', classe: 'bg-danger/10 text-danger' },
+  en_attente: { label: 'En attente', classe: 'bg-warning/10 text-warning' },
+  corrections: { label: 'Corrections demandées', classe: 'bg-danger/10 text-danger' },
   valide: { label: 'Validé', classe: 'bg-accent/10 text-accent' },
   presentation_planifiee: { label: 'Présentation planifiée', classe: 'bg-secondary/10 text-secondary' },
   presente: { label: 'Présenté', classe: 'bg-slate-200 text-slate-600' },
@@ -45,63 +57,103 @@ const badgesStatuts: Record<string, { label: string; classe: string }> = {
 
 <template>
   <div>
-    <h1 class="text-2xl font-bold text-slate-900">Tableau de bord</h1>
-    <p class="text-sm text-secondary mt-1 mb-6">
-      Bienvenue, {{ authStore.utilisateur?.prenom }} {{ authStore.utilisateur?.nom }}{{ stats?.specialite ? ' — ' + stats.specialite : '' }}
-    </p>
+    <div class="mb-6 opacity-0" :class="estMonte ? 'animate-entree' : ''">
+      <h1 class="text-2xl font-bold text-slate-900">Projets à encadrer</h1>
+      <p class="text-sm text-ink-light mt-1">{{ data?.projets.length ?? 0 }} projets assignés</p>
+    </div>
 
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-      <div v-for="c in cartes" :key="c.label" class="bg-card border border-slate-200 rounded-lg p-4">
-        <span :class="['inline-flex w-9 h-9 rounded-lg items-center justify-center mb-3', c.couleur]">
-          <svg class="w-4.5 h-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" :d="c.icone" />
-          </svg>
-        </span>
-        <p class="text-2xl font-bold text-slate-900">{{ c.valeur }}</p>
-        <p class="text-xs text-ink-light">{{ c.label }}</p>
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-6 opacity-0" :class="estMonte ? 'animate-entree' : ''" style="animation-delay: 80ms">
+      <div class="flex flex-wrap gap-2">
+        <button
+          v-for="o in onglets"
+          :key="o.valeur"
+          type="button"
+          @click="ongletActif = o.valeur"
+          class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-sm font-medium transition active:scale-95"
+          :class="ongletActif === o.valeur ? 'bg-primary text-white' : 'bg-slate-100 text-ink-light hover:bg-slate-200'"
+        >
+          {{ o.label }}
+          <span class="text-xs px-1.5 rounded-full transition-transform" :class="ongletActif === o.valeur ? 'bg-white/20 scale-105' : 'bg-card'">
+            {{ compte(o.valeur) }}
+          </span>
+        </button>
+      </div>
+
+      <div class="relative w-72">
+        <svg class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z" />
+        </svg>
+        <input
+          v-model="recherche"
+          type="text"
+          placeholder="Rechercher un projet ou un étudiant..."
+          class="w-full pl-9 pr-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary transition-shadow"
+        />
       </div>
     </div>
 
-    <div class="bg-card border border-slate-200 rounded-lg overflow-hidden">
-      <div class="flex items-center justify-between px-5 py-4 border-b border-slate-200">
-        <h2 class="font-semibold text-slate-900">Mes projets encadrés</h2>
-        <NuxtLink to="/encadreur/projets-a-encadrer" class="text-xs font-medium text-secondary hover:text-primary">
-          Voir tout
-        </NuxtLink>
-      </div>
-
+    <div class="bg-card border border-slate-200 rounded-lg overflow-x-auto opacity-0" :class="estMonte ? 'animate-entree' : ''" style="animation-delay: 140ms">
       <table class="w-full text-sm">
         <thead class="bg-slate-50 border-b border-slate-200">
           <tr class="text-left text-xs font-semibold text-ink-light uppercase tracking-wide">
             <th class="px-5 py-3">Étudiant</th>
-            <th class="px-5 py-3">Titre du projet</th>
+            <th class="px-5 py-3">Projet</th>
+            <th class="px-5 py-3">Promotion</th>
             <th class="px-5 py-3">Statut</th>
-            <th class="px-5 py-3">Dernière version</th>
+            <th class="px-5 py-3">Dépôt</th>
             <th class="px-5 py-3 text-right">Actions</th>
           </tr>
         </thead>
-        <tbody class="divide-y divide-slate-100">
-          <tr v-for="p in stats?.projets_recents" :key="p.id" class="hover:bg-slate-50/60">
-            <td class="px-5 py-3 font-medium text-slate-900">{{ p.etudiant }}</td>
-            <td class="px-5 py-3 text-ink-light max-w-xs truncate">{{ p.titre }}</td>
+        <TransitionGroup tag="tbody" name="ligne" class="divide-y divide-slate-100">
+          <tr v-for="p in projetsFiltres" :key="p.id" class="hover:bg-slate-50/60">
+            <td class="px-5 py-3">
+              <div class="flex items-center gap-2">
+                <span class="w-6 h-6 rounded-full bg-secondary/10 text-secondary text-[10px] font-semibold flex items-center justify-center shrink-0">
+                  {{ p.etudiant.prenom.charAt(0) }}{{ p.etudiant.nom.charAt(0) }}
+                </span>
+                {{ p.etudiant.prenom }} {{ p.etudiant.nom }}
+              </div>
+            </td>
+            <td class="px-5 py-3 text-slate-900 max-w-xs truncate">{{ p.titre }}</td>
+            <td class="px-5 py-3 text-secondary">{{ p.etudiant.promotion ?? '—' }}</td>
             <td class="px-5 py-3">
               <span class="inline-flex px-2.5 py-1 rounded-full text-xs font-medium" :class="badgesStatuts[p.statut]?.classe">
                 {{ badgesStatuts[p.statut]?.label }}
               </span>
             </td>
-            <td class="px-5 py-3 text-ink-light">V{{ p.derniere_version ?? '—' }}</td>
+            <td class="px-5 py-3 text-ink-light whitespace-nowrap">{{ p.derniere_version?.date_depot ?? '—' }}</td>
             <td class="px-5 py-3 text-right">
-              <NuxtLink :to="`/encadreur/projets/${p.id}`" class="text-xs font-medium text-secondary hover:text-primary">
-                Examiner
+              <NuxtLink :to="`/encadreur/projets/${p.id}`" class="inline-flex items-center gap-1 text-xs font-medium text-secondary hover:text-primary transition-all group">
+                Voir le détail
+                <span aria-hidden="true" class="transition-transform group-hover:translate-x-0.5">→</span>
               </NuxtLink>
             </td>
           </tr>
 
-          <tr v-if="!stats?.projets_recents.length">
-            <td colspan="5" class="px-5 py-10 text-center text-ink-light text-sm">Aucun projet encadré pour l'instant.</td>
+          <tr v-if="!projetsFiltres.length">
+            <td colspan="6" class="px-5 py-10 text-center text-ink-light text-sm">Aucun projet trouvé.</td>
           </tr>
-        </tbody>
+        </TransitionGroup>
       </table>
     </div>
   </div>
 </template>
+
+<style scoped>
+@keyframes entree {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-entree {
+  animation: entree 0.5s ease-out forwards;
+}
+
+.ligne-enter-active,
+.ligne-leave-active {
+  transition: opacity 0.25s ease;
+}
+.ligne-enter-from,
+.ligne-leave-to {
+  opacity: 0;
+}
+</style>

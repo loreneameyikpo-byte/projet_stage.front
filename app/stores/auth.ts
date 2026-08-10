@@ -7,6 +7,8 @@ interface Utilisateur {
   prenom: string
   email: string
   role: string
+  actif: boolean
+  mot_de_passe_a_changer: boolean
   promotion?: { id: string; annee: number; intitule: string }
   filiere?: string
   specialite?: string

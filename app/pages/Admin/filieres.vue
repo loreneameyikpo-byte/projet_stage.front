@@ -10,6 +10,11 @@ interface Item { id_filiere?: string; id_specialite?: string; libelle: string }
 
 const erreurSuppression = ref('')
 
+const estMonte = ref(false)
+onMounted(() => {
+  requestAnimationFrame(() => { estMonte.value = true })
+})
+
 
 // --- Filières ---
 const { data: filieresData, refresh: refreshFilieres } = await useAsyncData<{ filieres: Item[] }>('filieres', () =>
@@ -131,7 +136,7 @@ async function supprimerSpecialite(s: Item) {
     </p>
 
     <!-- ================= FILIÈRES ================= -->
-    <section class="mb-10">
+    <section class="mb-10 opacity-0" :class="estMonte ? 'animate-entree' : ''">
       <div class="flex items-center justify-between mb-3">
         <h2 class="font-semibold text-slate-900">
           Filières <span class="text-ink-light font-normal text-sm">({{ filieresData?.filieres.length ?? 0 }})</span>
@@ -148,13 +153,13 @@ async function supprimerSpecialite(s: Item) {
             type="text"
             placeholder="Nom de la nouvelle filière..."
             @keyup.enter="ajouterFiliere"
-            class="w-full pl-9 pr-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary"
+            class="w-full pl-9 pr-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary transition-shadow"
           />
         </div>
         <button
           type="button"
           @click="ajouterFiliere"
-          class="bg-secondary hover:bg-primary text-white text-sm font-medium px-5 rounded-lg transition"
+          class="bg-secondary hover:bg-primary text-white text-sm font-medium px-5 rounded-lg transition active:scale-95"
         >
           Ajouter
         </button>
@@ -164,14 +169,14 @@ async function supprimerSpecialite(s: Item) {
         v-model="rechercheFiliere"
         type="text"
         placeholder="Rechercher une filière..."
-        class="w-full mb-4 px-3.5 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary"
+        class="w-full mb-4 px-3.5 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary transition-shadow"
       />
 
-      <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+      <TransitionGroup tag="div" name="carte" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
         <div
           v-for="f in filieresFiltrees"
           :key="f.id_filiere"
-          class="flex items-center justify-between bg-card border border-slate-200 rounded-lg px-4 py-3"
+          class="flex items-center justify-between bg-card border border-slate-200 rounded-lg px-4 py-3 hover:border-secondary/40 hover:shadow-sm transition-all"
         >
           <template v-if="filiereEnEdition?.id_filiere === f.id_filiere">
             <input
@@ -185,12 +190,12 @@ async function supprimerSpecialite(s: Item) {
           <template v-else>
             <span class="text-sm font-medium text-slate-900">{{ f.libelle }}</span>
             <div class="flex items-center gap-2">
-              <button type="button" class="text-ink-light hover:text-secondary transition" @click="ouvrirEditionFiliere(f)">
+              <button type="button" class="text-ink-light hover:text-secondary hover:scale-110 active:scale-95 transition" @click="ouvrirEditionFiliere(f)">
                 <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                 </svg>
               </button>
-              <button type="button" class="text-ink-light hover:text-danger transition" @click="supprimerFiliere(f)">
+              <button type="button" class="text-ink-light hover:text-danger hover:scale-110 active:scale-95 transition" @click="supprimerFiliere(f)">
                 <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                 </svg>
@@ -202,11 +207,11 @@ async function supprimerSpecialite(s: Item) {
         <p v-if="!filieresFiltrees.length" class="col-span-full text-sm text-ink-light text-center py-6">
           Aucune filière trouvée.
         </p>
-      </div>
+      </TransitionGroup>
     </section>
 
     <!-- ================= SPÉCIALITÉS ================= -->
-    <section>
+    <section class="opacity-0" :class="estMonte ? 'animate-entree' : ''" style="animation-delay: 100ms">
       <div class="flex items-center justify-between mb-3">
         <h2 class="font-semibold text-slate-900">
           Spécialités <span class="text-ink-light font-normal text-sm">({{ specialitesData?.specialites.length ?? 0 }})</span>
@@ -223,13 +228,13 @@ async function supprimerSpecialite(s: Item) {
             type="text"
             placeholder="Nom de la nouvelle spécialité..."
             @keyup.enter="ajouterSpecialite"
-            class="w-full pl-9 pr-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary"
+            class="w-full pl-9 pr-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary transition-shadow"
           />
         </div>
         <button
           type="button"
           @click="ajouterSpecialite"
-          class="bg-secondary hover:bg-primary text-white text-sm font-medium px-5 rounded-lg transition"
+          class="bg-secondary hover:bg-primary text-white text-sm font-medium px-5 rounded-lg transition active:scale-95"
         >
           Ajouter
         </button>
@@ -239,14 +244,14 @@ async function supprimerSpecialite(s: Item) {
         v-model="rechercheSpecialite"
         type="text"
         placeholder="Rechercher une spécialité..."
-        class="w-full mb-4 px-3.5 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary"
+        class="w-full mb-4 px-3.5 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary transition-shadow"
       />
 
-      <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+      <TransitionGroup tag="div" name="carte" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
         <div
           v-for="s in specialitesFiltrees"
           :key="s.id_specialite"
-          class="flex items-center justify-between bg-card border border-slate-200 rounded-lg px-4 py-3"
+          class="flex items-center justify-between bg-card border border-slate-200 rounded-lg px-4 py-3 hover:border-secondary/40 hover:shadow-sm transition-all"
         >
           <template v-if="specialiteEnEdition?.id_specialite === s.id_specialite">
             <input
@@ -260,12 +265,12 @@ async function supprimerSpecialite(s: Item) {
           <template v-else>
             <span class="text-sm font-medium text-slate-900">{{ s.libelle }}</span>
             <div class="flex items-center gap-2">
-              <button type="button" class="text-ink-light hover:text-secondary transition" @click="ouvrirEditionSpecialite(s)">
+              <button type="button" class="text-ink-light hover:text-secondary hover:scale-110 active:scale-95 transition" @click="ouvrirEditionSpecialite(s)">
                 <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                 </svg>
               </button>
-              <button type="button" class="text-ink-light hover:text-danger transition" @click="supprimerSpecialite(s)">
+              <button type="button" class="text-ink-light hover:text-danger hover:scale-110 active:scale-95 transition" @click="supprimerSpecialite(s)">
                 <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                 </svg>
@@ -277,7 +282,33 @@ async function supprimerSpecialite(s: Item) {
         <p v-if="!specialitesFiltrees.length" class="col-span-full text-sm text-ink-light text-center py-6">
           Aucune spécialité trouvée.
         </p>
-      </div>
+      </TransitionGroup>
     </section>
   </div>
 </template>
+
+<style scoped>
+@keyframes entree {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-entree {
+  animation: entree 0.5s ease-out forwards;
+}
+
+.carte-enter-active,
+.carte-leave-active {
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+.carte-enter-from,
+.carte-leave-to {
+  opacity: 0;
+  transform: scale(0.96);
+}
+.carte-leave-active {
+  position: absolute;
+}
+.carte-move {
+  transition: transform 0.3s ease;
+}
+</style>

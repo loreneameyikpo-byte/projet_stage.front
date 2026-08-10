@@ -23,6 +23,11 @@ const { data, refresh } = await useAsyncData<{ salles: Salle[]; stats: { total: 
 const recherche = ref('')
 const erreurSuppression = ref('')
 
+const estMonte = ref(false)
+onMounted(() => {
+  requestAnimationFrame(() => { estMonte.value = true })
+})
+
 const sallesFiltrees = computed(() => {
   const terme = recherche.value.toLowerCase()
   return (data.value?.salles ?? []).filter(
@@ -105,7 +110,7 @@ async function supprimer(s: Salle) {
 
 <template>
   <div>
-    <div class="flex items-start justify-between mb-6">
+    <div class="flex items-start justify-between mb-6 opacity-0" :class="estMonte ? 'animate-entree' : ''">
       <div>
         <h1 class="text-2xl font-bold text-slate-900">Gestion des salles</h1>
         <p class="text-sm text-ink-light mt-1">
@@ -115,7 +120,7 @@ async function supprimer(s: Salle) {
       <button
         type="button"
         @click="ouvrirCreation"
-        class="inline-flex items-center gap-2 bg-secondary hover:bg-primary text-white text-sm font-medium px-4 py-2.5 rounded-lg transition shrink-0"
+        class="inline-flex items-center gap-2 bg-secondary hover:bg-primary text-white text-sm font-medium px-4 py-2.5 rounded-lg transition active:scale-95 shrink-0"
       >
         <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
@@ -127,21 +132,23 @@ async function supprimer(s: Salle) {
     <FormAlerte :message="erreurSuppression" />
 
     <div class="grid grid-cols-3 gap-4 mb-6 max-w-xl">
-      <div class="bg-card border border-slate-200 rounded-lg p-4">
-        <p class="text-2xl font-bold text-slate-900">{{ data?.stats.total ?? 0 }}</p>
-        <p class="text-xs text-ink-light">Salles</p>
-      </div>
-      <div class="bg-card border border-slate-200 rounded-lg p-4">
-        <p class="text-2xl font-bold text-accent">{{ data?.stats.places_totales ?? 0 }}</p>
-        <p class="text-xs text-ink-light">Places totales</p>
-      </div>
-      <div class="bg-card border border-slate-200 rounded-lg p-4">
-        <p class="text-2xl font-bold text-warning">{{ data?.stats.moyenne_places ?? 0 }}</p>
-        <p class="text-xs text-ink-light">Moy. places/salle</p>
+      <div
+        v-for="(stat, i) in [
+          { valeur: data?.stats.total ?? 0, label: 'Salles', couleur: 'text-slate-900' },
+          { valeur: data?.stats.places_totales ?? 0, label: 'Places totales', couleur: 'text-accent' },
+          { valeur: data?.stats.moyenne_places ?? 0, label: 'Moy. places/salle', couleur: 'text-warning' },
+        ]"
+        :key="stat.label"
+        class="bg-card border border-slate-200 rounded-lg p-4 opacity-0 hover:-translate-y-0.5 hover:shadow-md transition-all duration-300"
+        :class="estMonte ? 'animate-entree' : ''"
+        :style="{ animationDelay: `${i * 80}ms` }"
+      >
+        <p class="text-2xl font-bold" :class="stat.couleur">{{ stat.valeur }}</p>
+        <p class="text-xs text-ink-light">{{ stat.label }}</p>
       </div>
     </div>
 
-    <div class="relative mb-6 max-w-sm">
+    <div class="relative mb-6 max-w-sm opacity-0" :class="estMonte ? 'animate-entree' : ''" style="animation-delay: 260ms">
       <svg class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z" />
       </svg>
@@ -149,21 +156,21 @@ async function supprimer(s: Salle) {
         v-model="recherche"
         type="text"
         placeholder="Rechercher par numéro ou libellé..."
-        class="w-full pl-9 pr-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary"
+        class="w-full pl-9 pr-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary transition-shadow"
       />
     </div>
 
-    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-      <div v-for="s in sallesFiltrees" :key="s.id_salle" class="bg-card border border-slate-200 rounded-lg p-4">
+    <TransitionGroup tag="div" name="carte" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div v-for="s in sallesFiltrees" :key="s.id_salle" class="bg-card border border-slate-200 rounded-lg p-4 hover:border-secondary/40 hover:shadow-sm transition-all">
         <div class="flex items-start justify-between mb-1">
           <p class="font-semibold text-slate-900">{{ s.numero }}</p>
           <div class="flex items-center gap-1">
-            <button type="button" class="p-1 text-ink-light hover:text-secondary transition" @click="ouvrirEdition(s)">
+            <button type="button" class="p-1 text-ink-light hover:text-secondary hover:scale-110 active:scale-95 transition" @click="ouvrirEdition(s)">
               <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
               </svg>
             </button>
-            <button type="button" class="p-1 text-ink-light hover:text-danger transition" @click="supprimer(s)">
+            <button type="button" class="p-1 text-ink-light hover:text-danger hover:scale-110 active:scale-95 transition" @click="supprimer(s)">
               <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
               </svg>
@@ -173,43 +180,94 @@ async function supprimer(s: Salle) {
         <p class="text-xs text-ink-light mb-3">{{ s.libelle ?? '—' }}</p>
         <p class="text-xs text-ink-light mb-1">{{ s.capacite }} places</p>
         <div class="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-          <div class="h-full bg-secondary rounded-full" :style="{ width: pourcentage(s.capacite) + '%' }"></div>
+          <div class="h-full bg-secondary rounded-full transition-all duration-700 ease-out" :style="{ width: (estMonte ? pourcentage(s.capacite) : 0) + '%' }"></div>
         </div>
       </div>
 
       <p v-if="!sallesFiltrees.length" class="col-span-full text-sm text-ink-light text-center py-10">
         Aucune salle trouvée.
       </p>
-    </div>
+    </TransitionGroup>
 
     <!-- Modale -->
-    <div v-if="modaleOuverte" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4">
-      <div class="w-full max-w-md bg-white rounded-xl shadow-xl">
-        <div class="px-6 pt-6 pb-2">
-          <h2 class="text-lg font-bold text-slate-900">{{ salleEnEdition ? 'Modifier la salle' : 'Nouvelle salle' }}</h2>
-        </div>
+    <Transition name="modale-fondu">
+      <div v-if="modaleOuverte" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4">
+        <Transition name="panneau-zoom" appear>
+          <div class="w-full max-w-md bg-card rounded-xl shadow-xl">
+            <div class="px-6 pt-6 pb-2">
+              <h2 class="text-lg font-bold text-slate-900">{{ salleEnEdition ? 'Modifier la salle' : 'Nouvelle salle' }}</h2>
+            </div>
 
-        <form @submit.prevent="enregistrer" class="px-6 py-4 space-y-4">
-          <FormAlerte :message="erreurGenerale" />
+            <form @submit.prevent="enregistrer" class="px-6 py-4 space-y-4">
+              <FormAlerte :message="erreurGenerale" />
 
-          <FormInput v-model="numero" label="Numéro" placeholder="ex: A-101" :erreur="champ('numero')" requis />
-          <FormInput v-model="libelle" label="Libellé" placeholder="ex: Amphi A — Bâtiment Principal" :erreur="champ('libelle')" />
-          <FormInput v-model.number="capacite" label="Capacité (places)" type="number" :erreur="champ('capacite')" requis />
+              <FormInput v-model="numero" label="Numéro" placeholder="ex: A-101" :erreur="champ('numero')" requis />
+              <FormInput v-model="libelle" label="Libellé" placeholder="ex: Amphi A — Bâtiment Principal" :erreur="champ('libelle')" />
+              <FormInput v-model.number="capacite" label="Capacité (places)" type="number" :erreur="champ('capacite')" requis />
 
-          <div class="flex items-center justify-end gap-4 pt-3 border-t border-slate-100">
-            <button type="button" @click="modaleOuverte = false" class="text-sm font-medium text-secondary hover:text-primary">
-              Annuler
-            </button>
-            <button
-              type="submit"
-              :disabled="chargement"
-              class="bg-secondary hover:bg-primary text-white text-sm font-medium px-5 py-2 rounded-lg transition disabled:opacity-50"
-            >
-              {{ chargement ? 'Enregistrement...' : 'Créer' }}
-            </button>
+              <div class="flex items-center justify-end gap-4 pt-3 border-t border-slate-100">
+                <button type="button" @click="modaleOuverte = false" class="text-sm font-medium text-secondary hover:text-primary">
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  :disabled="chargement"
+                  class="bg-secondary hover:bg-primary text-white text-sm font-medium px-5 py-2 rounded-lg transition active:scale-95 disabled:opacity-50"
+                >
+                  {{ chargement ? 'Enregistrement...' : 'Créer' }}
+                </button>
+              </div>
+            </form>
           </div>
-        </form>
+        </Transition>
       </div>
-    </div>
+    </Transition>
   </div>
 </template>
+
+<style scoped>
+@keyframes entree {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-entree {
+  animation: entree 0.5s ease-out forwards;
+}
+
+.carte-enter-active,
+.carte-leave-active {
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+.carte-enter-from,
+.carte-leave-to {
+  opacity: 0;
+  transform: scale(0.96);
+}
+.carte-leave-active {
+  position: absolute;
+}
+.carte-move {
+  transition: transform 0.3s ease;
+}
+
+.modale-fondu-enter-active,
+.modale-fondu-leave-active {
+  transition: opacity 0.2s ease;
+}
+.modale-fondu-enter-from,
+.modale-fondu-leave-to {
+  opacity: 0;
+}
+
+.panneau-zoom-enter-active {
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+.panneau-zoom-leave-active {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.panneau-zoom-enter-from,
+.panneau-zoom-leave-to {
+  opacity: 0;
+  transform: scale(0.95) translateY(6px);
+}
+</style>

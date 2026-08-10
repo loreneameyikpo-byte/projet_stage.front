@@ -2,20 +2,27 @@
 import { useApi } from '../../Composables/useApi'
 import { useFormErrors } from '../../Composables/useFormErrors'
 import { useConfirmation } from '../../Composables/useConfirmation'
+import { useAlerte } from '~/Composables/useAlerte'
 
 definePageMeta({ layout: 'dashboard', middleware: 'role', roles: ['administrateur', 'super_administrateur'] })
 
 const { apiFetch } = useApi()
 const { demander } = useConfirmation()
+const { alerter } = useAlerte()
 const { erreurGenerale, traiter, reinitialiser, champ } = useFormErrors()
 
 // --- Onglet principal ---
 const ongletActif = ref<'planifier' | 'planning'>('planifier')
 
+const estMonte = ref(false)
+onMounted(() => {
+  requestAnimationFrame(() => { estMonte.value = true })
+})
+
 // --- Types ---
 interface Projet { id: string; titre: string; etudiant: { prenom: string; nom: string } }
 interface Salle { id_salle: string; numero: string; libelle: string | null }
-interface Encadreur { id: string; nom: string; prenom: string }
+interface MembrePotentiel { id: string; nom: string; prenom: string }
 interface MembreJury { id_utilisateur: string; nom: string; prenom: string; role_jury: string; note_saisie: number | null }
 interface Presentation {
   id: string
@@ -25,9 +32,20 @@ interface Presentation {
   statut: 'planifiee' | 'terminee'
   etudiant: { nom: string; prenom: string }
   projet: { titre: string }
-  salle: { numero: string; libelle: string | null }
+  salle: { id_salle: string; numero: string; libelle: string | null }
   jury: { membres: MembreJury[] }
 }
+
+function dateHeureComplete(p: { date_presentation: string; heure_presentation: string }): Date {
+  return new Date(`${p.date_presentation}T${p.heure_presentation}`)
+}
+
+const soutenancesAVenir = computed(() =>
+  [...(data.value?.presentations ?? [])]
+    .filter((p) => dateHeureComplete(p) >= new Date())
+    .sort((a, b) => dateHeureComplete(a).getTime() - dateHeureComplete(b).getTime())
+    .slice(0, 3)
+)
 
 // --- Données partagées ---
 const { data: projetsData } = await useAsyncData<{ projets: Projet[] }>('projets-valides', async () => {
@@ -35,9 +53,27 @@ const { data: projetsData } = await useAsyncData<{ projets: Projet[] }>('projets
   return { projets: res.projets.filter((p) => p.statut === 'valide') }
 })
 const { data: sallesData } = await useAsyncData<{ salles: Salle[] }>('salles-select', () => apiFetch<{ salles: Salle[] }>('/salles'))
-const { data: encadreursData } = await useAsyncData<{ utilisateurs: Encadreur[] }>('encadreurs-select', () =>
-  apiFetch<{ utilisateurs: Encadreur[] }>('/utilisateurs?role=encadreur')
+
+// Encadreurs ET jurys externes peuvent tous deux siéger dans un jury de soutenance
+const { data: encadreursData } = await useAsyncData<{ utilisateurs: MembrePotentiel[] }>('encadreurs-select', () =>
+  apiFetch<{ utilisateurs: MembrePotentiel[] }>('/utilisateurs?role=encadreur')
 )
+const { data: juryExterneData } = await useAsyncData<{ utilisateurs: MembrePotentiel[] }>('jury-externe-select', () =>
+  apiFetch<{ utilisateurs: MembrePotentiel[] }>('/utilisateurs?role=jury_externe')
+)
+
+// Liste combinée utilisée par les 3 sélecteurs de composition du jury
+const membresJuryDisponibles = computed(() => [
+  ...(encadreursData.value?.utilisateurs ?? []).map((e) => ({
+    value: e.id,
+    label: `${e.prenom} ${e.nom} — Encadreur`,
+  })),
+  ...(juryExterneData.value?.utilisateurs ?? []).map((e) => ({
+    value: e.id,
+    label: `${e.prenom} ${e.nom} — Jury externe`,
+  })),
+])
+
 const { data, refresh } = await useAsyncData<{ presentations: Presentation[] }>('presentations', () =>
   apiFetch<{ presentations: Presentation[] }>('/presentations')
 )
@@ -59,6 +95,15 @@ const verificationEnCours = ref(false)
 async function verifierDisponibilite() {
   if (!date.value || !heure.value || !idSalle.value) return
 
+  const aujourdHui = new Date().toISOString().split('T')[0] ?? ''
+  if (date.value < aujourdHui) {
+    await alerter({
+      titre: 'Date invalide',
+      message: 'La date de la soutenance doit être aujourd\'hui ou dans le futur.',
+    })
+    return
+  }
+
   verificationEnCours.value = true
   disponibiliteVerifiee.value = null
 
@@ -78,6 +123,35 @@ const succes = ref('')
 async function planifier() {
   reinitialiser()
   succes.value = ''
+
+  // Vérification des champs requis AVANT toute chose (et avant chargement = true)
+  const champsRequis: [string, string][] = [
+    [idProjet.value, 'Projet concerné'],
+    [date.value, 'Date'],
+    [heure.value, 'Heure'],
+    [idSalle.value, 'Salle'],
+    [idPresident.value, 'Président du jury'],
+    [idRapporteur.value, 'Rapporteur'],
+  ]
+
+  const champManquant = champsRequis.find(([valeur]) => !valeur)
+  if (champManquant) {
+    await alerter({
+      titre: 'Champ requis',
+      message: `Merci de renseigner le champ « ${champManquant[1]} » avant de continuer.`,
+    })
+    return
+  }
+
+  const aujourdHui = new Date().toISOString().split('T')[0] ?? ''
+  if (date.value < aujourdHui) {
+    await alerter({
+      titre: 'Date invalide',
+      message: 'La date de la soutenance doit être aujourd\'hui ou dans le futur.',
+    })
+    return
+  }
+
   chargement.value = true
 
   const membres = [
@@ -208,11 +282,98 @@ function moisPrecedent() {
 function moisSuivant() {
   moisAffiche.value = new Date(moisAffiche.value.getFullYear(), moisAffiche.value.getMonth() + 1, 1)
 }
+
+const modeEdition = ref(false)
+const idPresentationEnEdition = ref<string | null>(null)
+
+function ouvrirModification(p: Presentation) {
+  modeEdition.value = true
+  idPresentationEnEdition.value = p.id
+  date.value = p.date_presentation
+  heure.value = p.heure_presentation
+  idSalle.value = p.salle.id_salle // vérifie que ce champ existe dans PresentationResource, sinon adapte
+  idPresident.value = p.jury.membres.find(m => m.role_jury === 'president')?.id_utilisateur ?? ''
+  idRapporteur.value = p.jury.membres.find(m => m.role_jury === 'rapporteur')?.id_utilisateur ?? ''
+  idMembreSupplementaire.value = p.jury.membres.find(m => m.role_jury === 'membre')?.id_utilisateur ?? ''
+  presentationDetail.value = null
+  ongletActif.value = 'planifier'
+  reinitialiser()
+}
+
+async function enregistrerModification() {
+  reinitialiser()
+  succes.value = ''
+
+  const champsRequis: [string, string][] = [
+    [date.value, 'Date'],
+    [heure.value, 'Heure'],
+    [idSalle.value, 'Salle'],
+    [idPresident.value, 'Président du jury'],
+    [idRapporteur.value, 'Rapporteur'],
+  ]
+
+  const champManquant = champsRequis.find(([valeur]) => !valeur)
+  if (champManquant) {
+    await alerter({
+      titre: 'Champ requis',
+      message: `Merci de renseigner le champ « ${champManquant[1]} » avant de continuer.`,
+    })
+    return
+  }
+
+  const aujourdHui = new Date().toISOString().slice(0, 10)
+  if (date.value < aujourdHui) {
+    await alerter({
+      titre: 'Date invalide',
+      message: 'La date de la soutenance doit être aujourd\'hui ou dans le futur.',
+    })
+    return
+  }
+
+  chargement.value = true
+
+  const membres = [
+    { id_utilisateur: idPresident.value, role_jury: 'president' },
+    { id_utilisateur: idRapporteur.value, role_jury: 'rapporteur' },
+  ]
+  if (idMembreSupplementaire.value) {
+    membres.push({ id_utilisateur: idMembreSupplementaire.value, role_jury: 'membre' })
+  }
+
+  try {
+    await apiFetch(`/presentations/${idPresentationEnEdition.value}`, {
+      method: 'PUT',
+      body: {
+        date_presentation: date.value,
+        heure_presentation: heure.value,
+        id_salle: idSalle.value,
+        membres,
+      },
+    })
+
+    succes.value = 'Soutenance modifiée avec succès.'
+    modeEdition.value = false
+    idPresentationEnEdition.value = null
+    date.value = ''
+    heure.value = ''
+    idSalle.value = ''
+    idPresident.value = ''
+    idRapporteur.value = ''
+    idMembreSupplementaire.value = ''
+
+    await refresh()
+    ongletActif.value = 'planning'
+  } catch (e: any) {
+    traiter(e)
+  } finally {
+    chargement.value = false
+  }
+}
 </script>
 
 <template>
   <div>
-    <div class="flex items-start justify-between mb-6">
+    <div class="flex items-start justify-between mb-6 opacity-0" :class="estMonte ? 'animate-entree' : ''">
       <div>
         <h1 class="text-2xl font-bold text-slate-900">Présentations</h1>
         <p class="text-sm text-ink-light mt-1">Planifier et suivre les soutenances de fin de formation</p>
@@ -220,11 +381,11 @@ function moisSuivant() {
     </div>
 
     <!-- Onglets principaux -->
-    <div class="flex gap-2 mb-6 border-b border-slate-200">
+    <div class="flex gap-2 mb-6 border-b border-slate-200 opacity-0" :class="estMonte ? 'animate-entree' : ''" style="animation-delay: 80ms">
       <button
         type="button"
         @click="ongletActif = 'planifier'"
-        class="px-4 py-2.5 text-sm font-medium border-b-2 transition"
+        class="px-4 py-2.5 text-sm font-medium border-b-2 transition-colors duration-200"
         :class="ongletActif === 'planifier' ? 'border-secondary text-secondary' : 'border-transparent text-ink-light hover:text-slate-700'"
       >
         Planifier une présentation
@@ -232,7 +393,7 @@ function moisSuivant() {
       <button
         type="button"
         @click="ongletActif = 'planning'"
-        class="px-4 py-2.5 text-sm font-medium border-b-2 transition"
+        class="px-4 py-2.5 text-sm font-medium border-b-2 transition-colors duration-200"
         :class="ongletActif === 'planning' ? 'border-secondary text-secondary' : 'border-transparent text-ink-light hover:text-slate-700'"
       >
         Planning des présentations
@@ -240,14 +401,16 @@ function moisSuivant() {
     </div>
 
     <!-- ==================== ONGLET PLANIFIER ==================== -->
-    <div v-if="ongletActif === 'planifier'" class="grid lg:grid-cols-3 gap-6">
+    <Transition name="onglet" mode="out-in">
+    <div v-if="ongletActif === 'planifier'" key="planifier" class="grid lg:grid-cols-3 gap-6">
       <div class="lg:col-span-2 bg-card border border-slate-200 rounded-lg p-6">
         <FormAlerte :message="erreurGenerale" />
         <p v-if="succes" class="text-sm text-accent mb-4">{{ succes }}</p>
 
-        <form @submit.prevent="planifier" class="space-y-5">
-          <h2 class="font-semibold text-slate-900">Détails de la soutenance</h2>
-
+        <form @submit.prevent="modeEdition ? enregistrerModification() : planifier()" class="space-y-5" novalidate>
+           <h2 class="font-semibold text-slate-900">
+              {{ modeEdition ? 'Modifier la soutenance' : 'Détails de la soutenance' }}
+              </h2>
           <FormSelect
             v-model="idProjet"
             label="Projet concerné"
@@ -293,12 +456,13 @@ function moisSuivant() {
 
           <div class="pt-4 border-t border-slate-100">
             <h2 class="font-semibold text-slate-900 mb-4">Composition du jury</h2>
+            <p class="text-xs text-ink-light -mt-2 mb-4">Le jury peut être composé d'encadreurs internes et/ou de jurys externes.</p>
 
             <div class="grid grid-cols-2 gap-4 mb-4">
               <FormSelect
                 v-model="idPresident"
                 label="Président"
-                :options="(encadreursData?.utilisateurs ?? []).map(e => ({ value: e.id, label: `${e.prenom} ${e.nom}` }))"
+                :options="membresJuryDisponibles"
                 placeholder="— Sélectionner —"
                 :erreur="champ('membres.0.id_utilisateur')"
                 requis
@@ -306,7 +470,7 @@ function moisSuivant() {
               <FormSelect
                 v-model="idRapporteur"
                 label="Rapporteur"
-                :options="(encadreursData?.utilisateurs ?? []).map(e => ({ value: e.id, label: `${e.prenom} ${e.nom}` }))"
+                :options="membresJuryDisponibles"
                 placeholder="— Sélectionner —"
                 :erreur="champ('membres.1.id_utilisateur')"
                 requis
@@ -316,7 +480,7 @@ function moisSuivant() {
             <FormSelect
               v-model="idMembreSupplementaire"
               label="Membre supplémentaire"
-              :options="(encadreursData?.utilisateurs ?? []).map(e => ({ value: e.id, label: `${e.prenom} ${e.nom}` }))"
+              :options="membresJuryDisponibles"
               placeholder="— Optionnel —"
             />
           </div>
@@ -330,7 +494,7 @@ function moisSuivant() {
               <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
-              {{ chargement ? 'Planification...' : 'Planifier la soutenance' }}
+              {{ chargement ? 'Planification...' : modeEdition ? 'Enregistrer les modifications' : 'Planifier la soutenance' }}
             </button>
             <button type="button" @click="ongletActif = 'planning'" class="text-sm font-medium text-secondary hover:text-primary">
               Voir le planning
@@ -358,13 +522,13 @@ function moisSuivant() {
         <div class="bg-card border border-slate-200 rounded-lg p-5">
           <h3 class="font-semibold text-slate-900 text-sm mb-3">Soutenances à venir</h3>
           <div class="space-y-3">
-            <div v-for="p in (data?.presentations ?? []).slice(0, 3)" :key="p.id">
+            <div v-for="p in soutenancesAVenir" :key="p.id">              
               <p class="text-sm font-medium text-slate-900 truncate">{{ p.etudiant.prenom }} {{ p.etudiant.nom }}</p>
               <p class="text-xs text-ink-light">
                 {{ p.date_presentation }} à {{ p.heure_presentation }} — {{ p.salle.numero }}
               </p>
             </div>
-            <p v-if="!data?.presentations.length" class="text-xs text-ink-light">Aucune soutenance planifiée.</p>
+            <p v-if="!soutenancesAVenir.length" class="text-xs text-ink-light">Aucune soutenance planifiée.</p>
           </div>
         </div>
 
@@ -379,25 +543,24 @@ function moisSuivant() {
     </div>
 
     <!-- ==================== ONGLET PLANNING ==================== -->
-    <div v-else>
+    <div v-else key="planning">
       <FormAlerte :message="erreurAction" />
 
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-        <div class="bg-card border border-slate-200 rounded-lg p-4">
-          <p class="text-2xl font-bold text-slate-900">{{ stats.total }}</p>
-          <p class="text-xs text-ink-light">Total soutenances</p>
-        </div>
-        <div class="bg-card border border-slate-200 rounded-lg p-4">
-          <p class="text-2xl font-bold text-secondary">{{ stats.a_venir }}</p>
-          <p class="text-xs text-ink-light">À venir</p>
-        </div>
-        <div class="bg-card border border-slate-200 rounded-lg p-4">
-          <p class="text-2xl font-bold text-slate-600">{{ stats.terminees }}</p>
-          <p class="text-xs text-ink-light">Terminées</p>
-        </div>
-        <div class="bg-card border border-slate-200 rounded-lg p-4">
-          <p class="text-2xl font-bold text-accent">{{ stats.notees }}</p>
-          <p class="text-xs text-ink-light">Notées</p>
+        <div
+          v-for="(s, i) in [
+            { valeur: stats.total, label: 'Total soutenances', couleur: 'text-slate-900' },
+            { valeur: stats.a_venir, label: 'À venir', couleur: 'text-secondary' },
+            { valeur: stats.terminees, label: 'Terminées', couleur: 'text-slate-600' },
+            { valeur: stats.notees, label: 'Notées', couleur: 'text-accent' },
+          ]"
+          :key="s.label"
+          class="bg-card border border-slate-200 rounded-lg p-4 opacity-0 hover:-translate-y-0.5 hover:shadow-md transition-all duration-300"
+          :class="estMonte ? 'animate-entree' : ''"
+          :style="{ animationDelay: `${i * 70}ms` }"
+        >
+          <p class="text-2xl font-bold" :class="s.couleur">{{ s.valeur }}</p>
+          <p class="text-xs text-ink-light">{{ s.label }}</p>
         </div>
       </div>
 
@@ -408,7 +571,7 @@ function moisSuivant() {
             :key="o.valeur"
             type="button"
             @click="filtreStatut = o.valeur"
-            class="px-3.5 py-2 rounded-full text-sm font-medium transition"
+            class="px-3.5 py-2 rounded-full text-sm font-medium transition active:scale-95"
             :class="filtreStatut === o.valeur ? 'bg-primary text-white' : 'bg-slate-100 text-ink-light hover:bg-slate-200'"
           >
             {{ o.label }}
@@ -421,7 +584,7 @@ function moisSuivant() {
               type="button"
               @click="vue = 'liste'"
               class="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-medium transition"
-              :class="vue === 'liste' ? 'bg-white text-slate-900' : 'bg-slate-50 text-ink-light hover:bg-slate-100'"
+              :class="vue === 'liste' ? 'bg-card text-slate-900' : 'bg-slate-50 text-ink-light hover:bg-slate-100'"
             >
               <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h7" />
@@ -432,7 +595,7 @@ function moisSuivant() {
               type="button"
               @click="vue = 'calendrier'"
               class="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-medium transition border-l border-slate-200"
-              :class="vue === 'calendrier' ? 'bg-white text-slate-900' : 'bg-slate-50 text-ink-light hover:bg-slate-100'"
+              :class="vue === 'calendrier' ? 'bg-card text-slate-900' : 'bg-slate-50 text-ink-light hover:bg-slate-100'"
             >
               <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -444,7 +607,7 @@ function moisSuivant() {
           <button
             type="button"
             @click="ongletActif = 'planifier'"
-            class="inline-flex items-center gap-2 bg-secondary hover:bg-primary text-white text-sm font-medium px-4 py-2.5 rounded-lg transition shrink-0"
+            class="inline-flex items-center gap-2 bg-secondary hover:bg-primary text-white text-sm font-medium px-4 py-2.5 rounded-lg transition active:scale-95 shrink-0"
           >
             <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
@@ -455,11 +618,11 @@ function moisSuivant() {
       </div>
 
       <!-- Vue liste -->
-      <div v-if="vue === 'liste'" class="space-y-3">
+      <TransitionGroup v-if="vue === 'liste'" tag="div" name="ligne" class="space-y-3">
         <div
           v-for="p in presentationsFiltrees"
           :key="p.id"
-          class="bg-card border border-slate-200 rounded-lg p-4 flex items-start gap-4"
+          class="bg-card border border-slate-200 rounded-lg p-4 flex items-start gap-4 hover:border-secondary/30 hover:shadow-sm transition-all"
         >
           <div class="w-14 text-center shrink-0 bg-secondary/5 rounded-lg py-2">
             <p class="text-lg font-bold text-secondary">{{ p.date_presentation.split('-')[2] }}</p>
@@ -496,8 +659,19 @@ function moisSuivant() {
               {{ p.note_finale }}/20
             </p>
           </div>
-
+            
           <div class="flex items-center gap-2 shrink-0">
+            <button
+    v-if="p.statut === 'planifiee'"
+    type="button"
+    class="p-1.5 text-ink-light hover:text-secondary transition"
+    title="Modifier"
+    @click="ouvrirModification(p)"
+  >
+    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+    </svg>
+  </button> 
             <button type="button" class="p-1.5 text-ink-light hover:text-secondary transition" @click="presentationDetail = p">
               <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
@@ -521,18 +695,18 @@ function moisSuivant() {
         <p v-if="!presentationsFiltrees.length" class="text-sm text-ink-light text-center py-10">
           Aucune soutenance trouvée.
         </p>
-      </div>
+      </TransitionGroup>
 
       <!-- Vue calendrier -->
-      <div v-else class="bg-card border border-slate-200 rounded-lg p-5">
+      <div v-else class="bg-card border border-slate-200 rounded-lg p-5 opacity-0 animate-entree">
         <div class="flex items-center justify-between mb-4">
-          <button type="button" @click="moisPrecedent" class="p-1.5 text-ink-light hover:text-secondary transition">
+          <button type="button" @click="moisPrecedent" class="p-1.5 text-ink-light hover:text-secondary hover:scale-110 active:scale-95 transition">
             <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
             </svg>
           </button>
-          <p class="font-semibold text-slate-900 capitalize">{{ nomMoisAnnee }}</p>
-          <button type="button" @click="moisSuivant" class="p-1.5 text-ink-light hover:text-secondary transition">
+          <p class="font-semibold text-slate-900 capitalize transition-opacity duration-200">{{ nomMoisAnnee }}</p>
+          <button type="button" @click="moisSuivant" class="p-1.5 text-ink-light hover:text-secondary hover:scale-110 active:scale-95 transition">
             <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
             </svg>
@@ -545,7 +719,7 @@ function moisSuivant() {
           <div
             v-for="(jour, i) in joursDuMois"
             :key="i"
-            class="bg-white min-h-[80px] p-1.5"
+            class="bg-card min-h-[80px] p-1.5"
             :class="!jour ? 'bg-slate-50/50' : ''"
           >
             <p v-if="jour" class="text-slate-500 mb-1">{{ jour }}</p>
@@ -553,7 +727,7 @@ function moisSuivant() {
               v-for="p in presentationsDuJour(jour)"
               :key="p.id"
               type="button"
-              class="w-full text-left bg-secondary/10 text-secondary text-[10px] rounded px-1.5 py-1 mb-1 truncate hover:bg-secondary/20 transition"
+              class="w-full text-left bg-secondary/10 text-secondary text-[10px] rounded px-1.5 py-1 mb-1 truncate hover:bg-secondary/20 active:scale-95 transition"
               @click="presentationDetail = p"
             >
               {{ p.heure_presentation }} — {{ p.etudiant.prenom }}
@@ -563,11 +737,13 @@ function moisSuivant() {
       </div>
 
       <!-- Modale détail -->
-      <div v-if="presentationDetail" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4">
-        <div class="w-full max-w-md bg-white rounded-xl shadow-xl p-6">
+      <Transition name="modale-fondu">
+        <div v-if="presentationDetail" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4">
+          <Transition name="panneau-zoom" appear>
+        <div class="w-full max-w-md bg-card rounded-xl shadow-xl p-6">
           <div class="flex items-center justify-between mb-4">
             <h2 class="text-lg font-bold text-slate-900">Détail de la soutenance</h2>
-            <button type="button" @click="presentationDetail = null" class="text-ink-light hover:text-slate-600">
+            <button type="button" @click="presentationDetail = null" class="text-ink-light hover:text-slate-600 hover:scale-110 active:scale-95 transition">
               <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
               </svg>
@@ -627,7 +803,59 @@ function moisSuivant() {
             </button>
           </div>
         </div>
-      </div>
+          </Transition>
+        </div>
+      </Transition>
     </div>
+    </Transition>
   </div>
 </template>
+
+<style scoped>
+@keyframes entree {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-entree {
+  animation: entree 0.5s ease-out forwards;
+}
+
+.ligne-enter-active,
+.ligne-leave-active {
+  transition: opacity 0.25s ease;
+}
+.ligne-enter-from,
+.ligne-leave-to {
+  opacity: 0;
+}
+
+.modale-fondu-enter-active,
+.modale-fondu-leave-active {
+  transition: opacity 0.2s ease;
+}
+.modale-fondu-enter-from,
+.modale-fondu-leave-to {
+  opacity: 0;
+}
+
+.panneau-zoom-enter-active {
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+.panneau-zoom-leave-active {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.panneau-zoom-enter-from,
+.panneau-zoom-leave-to {
+  opacity: 0;
+  transform: scale(0.95) translateY(6px);
+}
+
+.onglet-enter-active,
+.onglet-leave-active {
+  transition: opacity 0.2s ease;
+}
+.onglet-enter-from,
+.onglet-leave-to {
+  opacity: 0;
+}
+</style>

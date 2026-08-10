@@ -10,7 +10,7 @@ css: [
 ],
   vite: {
     optimizeDeps: {
-      include: ["@tabler/icons-vue","@vue/devtools-core", "@vue/devtools-kit"],
+      include: ["@vue/devtools-core", "@vue/devtools-kit"],
     },
   },
   app: {
@@ -23,6 +23,22 @@ css: [
           href: "https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap",
         },
         { rel: 'stylesheet', href: 'https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css' },
+      ],
+      script: [
+        {
+          innerHTML: `
+            (function () {
+              try {
+                var stored = localStorage.getItem('theme');
+                var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                if (stored === 'dark' || (!stored && prefersDark)) {
+                  document.documentElement.classList.add('dark');
+                }
+              } catch (e) {}
+            })();
+          `,
+          type: 'text/javascript',
+        },
       ],
     },
   },

@@ -1,5 +1,5 @@
 import { useAuthStore } from "../stores/auth"
-import { navigateTo } from 'nuxt/app'
+import { defineNuxtRouteMiddleware, navigateTo } from '#app'
 
 /**
  * S'exécute avant chaque navigation (fichier suffixé ".global.ts").
@@ -14,7 +14,7 @@ export default defineNuxtRouteMiddleware(async (to) => {
     await authStore.fetchMe()
   }
 
-  const publicPages = ['/', '/login',]
+  const publicPages = ['/', '/login','/mot-de-passe-oublié', '/reinitialiser-mot-de-passe']
   const isPublicPage = publicPages.includes(to.path)
 
   //  si pas connecté
@@ -23,6 +23,8 @@ export default defineNuxtRouteMiddleware(async (to) => {
       return navigateTo('/login')
     }
   }
-
+  if (authStore.utilisateur?.mot_de_passe_a_changer && to.path !== '/changer-mot-de-passe') {
+    return navigateTo('/changer-mot-de-passe')
+  }
   
 })

@@ -55,12 +55,46 @@ const badgesVersion: Record<string, { label: string; classe: string }> = {
 function initiales(nom: string, prenom: string) {
   return `${prenom.charAt(0)}${nom.charAt(0)}`.toUpperCase()
 }
+
+const listeStatuts = [
+  { value: 'en_attente', label: 'En attente' },
+  { value: 'corrections', label: 'Corrections demandées' },
+  { value: 'valide', label: 'Validé' },
+  { value: 'presentation_planifiee', label: 'Présentation planifiée' },
+  { value: 'presente', label: 'Présenté' },
+]
+
+const changementEnCours = ref(false)
+const erreurStatut = ref('')
+
+const estMonte = ref(false)
+onMounted(() => {
+  requestAnimationFrame(() => { estMonte.value = true })
+})
+
+async function changerStatut(nouveauStatut: string) {
+  if (!data.value?.projet || nouveauStatut === data.value.projet.statut) return
+
+  erreurStatut.value = ''
+  changementEnCours.value = true
+  try {
+    await apiFetch(`/projets/${route.params.id}/statut`, {
+      method: 'PATCH',
+      body: { statut: nouveauStatut },
+    })
+    if (data.value) data.value.projet.statut = nouveauStatut
+  } catch (e: any) {
+    erreurStatut.value = e?.data?.message || 'Impossible de modifier le statut.'
+  } finally {
+    changementEnCours.value = false
+  }
+}
 </script>
 
 <template>
   <div>
-    <NuxtLink to="/admin/projets" class="inline-flex items-center gap-1.5 text-sm text-secondary hover:text-primary mb-4">
-      <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <NuxtLink to="/admin/projets" class="inline-flex items-center gap-1.5 text-sm text-secondary hover:text-primary transition-colors mb-4 group">
+      <svg class="w-4 h-4 transition-transform group-hover:-translate-x-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
       </svg>
       Retour aux projets
@@ -70,36 +104,48 @@ function initiales(nom: string, prenom: string) {
     <div v-else-if="error" class="text-sm text-danger">Projet introuvable.</div>
 
     <div v-else-if="data?.projet">
-      <div class="flex items-start justify-between mb-6">
+      <div class="flex items-start justify-between mb-6 opacity-0" :class="estMonte ? 'animate-entree' : ''">
         <div>
           <h1 class="text-2xl font-bold text-slate-900">{{ data.projet.titre }}</h1>
           <p class="text-sm text-ink-light mt-1">
             {{ data.projet.etudiant.prenom }} {{ data.projet.etudiant.nom }}
           </p>
         </div>
+         <!-- 
         <span class="inline-flex px-3 py-1.5 rounded-full text-xs font-medium" :class="badgesStatuts[data.projet.statut]?.classe">
           {{ badgesStatuts[data.projet.statut]?.label }}
-        </span>
+        </span> -->
+        <div class="text-right">
+    <SelectPersonnalise
+      :model-value="data.projet.statut"
+      @update:model-value="changerStatut"
+      :options="listeStatuts"
+      :disabled="changementEnCours"
+      :trigger-class="`inline-flex items-center gap-1.5 w-auto text-xs font-medium rounded-full border px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-secondary disabled:opacity-50 transition-colors ${badgesStatuts[data.projet.statut]?.classe ?? ''}`"
+    />
+    <p v-if="erreurStatut" class="text-xs text-danger mt-1">{{ erreurStatut }}</p>
+  </div>
+
       </div>
 
       <div class="grid lg:grid-cols-3 gap-6">
         <!-- Colonne principale -->
         <div class="lg:col-span-2 space-y-6">
           <!-- Description -->
-          <div class="bg-card border border-slate-200 rounded-lg p-6">
+          <div class="bg-card border border-slate-200 rounded-lg p-6 opacity-0" :class="estMonte ? 'animate-entree' : ''" style="animation-delay: 80ms">
             <h2 class="font-semibold text-slate-900 mb-3">Description</h2>
             <p class="text-sm text-slate-700 leading-relaxed whitespace-pre-line">{{ data.projet.description }}</p>
           </div>
 
           <!-- Historique des versions -->
-          <div class="bg-card border border-slate-200 rounded-lg p-6">
+          <div class="bg-card border border-slate-200 rounded-lg p-6 opacity-0" :class="estMonte ? 'animate-entree' : ''" style="animation-delay: 140ms">
             <h2 class="font-semibold text-slate-900 mb-4">Historique des versions</h2>
 
-            <div class="space-y-3">
+            <TransitionGroup tag="div" name="ligne" class="space-y-3">
               <div
                 v-for="v in data.projet.versions"
                 :key="v.id"
-                class="flex items-center justify-between border border-slate-100 rounded-lg px-4 py-3"
+                class="flex items-center justify-between border border-slate-100 rounded-lg px-4 py-3 hover:border-secondary/30 hover:bg-slate-50/40 transition-colors"
               >
                 <div>
                   <p class="text-sm font-medium text-slate-900">Version {{ v.numero_version }}</p>
@@ -140,14 +186,14 @@ function initiales(nom: string, prenom: string) {
               <p v-if="!data.projet.versions.length" class="text-sm text-ink-light text-center py-6">
                 Aucune version déposée.
               </p>
-            </div>
+            </TransitionGroup>
           </div>
 
           <!-- Observations -->
-          <div class="bg-card border border-slate-200 rounded-lg p-6">
+          <div class="bg-card border border-slate-200 rounded-lg p-6 opacity-0" :class="estMonte ? 'animate-entree' : ''" style="animation-delay: 200ms">
             <h2 class="font-semibold text-slate-900 mb-4">Observations de l'encadreur</h2>
 
-            <div class="space-y-4">
+            <TransitionGroup tag="div" name="ligne" class="space-y-4">
               <div v-for="o in data.projet.observations" :key="o.id" class="flex gap-3">
                 <span class="w-8 h-8 rounded-full bg-secondary/10 text-secondary text-xs font-semibold flex items-center justify-center shrink-0">
                   {{ initiales(o.auteur.nom, o.auteur.prenom) }}
@@ -164,13 +210,13 @@ function initiales(nom: string, prenom: string) {
               <p v-if="!data.projet.observations.length" class="text-sm text-ink-light text-center py-6">
                 Aucune observation pour l'instant.
               </p>
-            </div>
+            </TransitionGroup>
           </div>
         </div>
 
         <!-- Colonne latérale -->
         <div class="space-y-6">
-          <div class="bg-card border border-slate-200 rounded-lg p-5">
+          <div class="bg-card border border-slate-200 rounded-lg p-5 opacity-0" :class="estMonte ? 'animate-entree' : ''" style="animation-delay: 240ms">
             <h2 class="font-semibold text-slate-900 mb-4 text-sm">Informations</h2>
 
             <div class="space-y-3 text-sm">
@@ -196,3 +242,22 @@ function initiales(nom: string, prenom: string) {
     </div>
   </div>
 </template>
+
+<style scoped>
+@keyframes entree {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-entree {
+  animation: entree 0.5s ease-out forwards;
+}
+
+.ligne-enter-active,
+.ligne-leave-active {
+  transition: opacity 0.25s ease;
+}
+.ligne-enter-from,
+.ligne-leave-to {
+  opacity: 0;
+}
+</style>

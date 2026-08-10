@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { useApi } from '~/Composables/useApi'
 import { useRoute, useAsyncData } from '#imports'
-import { ref, computed } from 'vue'
-import { IconPlus, IconSearch, IconPencil, IconTrash, IconMail } from '@tabler/icons-vue'
+import { ref, computed, onMounted } from 'vue'
+import { useConfirmation } from '~/Composables/useConfirmation'
 
 definePageMeta({ layout: 'dashboard', middleware: 'role', roles: ['super_administrateur'] })
 
 const { apiFetch } = useApi()
+const{ demander } = useConfirmation() 
 
 interface Administrateur {
   id: string
@@ -74,6 +75,11 @@ const messageErreur = ref('')
 let timerMessageRenvoi: ReturnType<typeof setTimeout> | null = null
 let timerMessageErreur: ReturnType<typeof setTimeout> | null = null
 
+const estMonte = ref(false)
+onMounted(() => {
+  requestAnimationFrame(() => { estMonte.value = true })
+})
+
 function afficherErreur(texte: string) {
   messageErreur.value = texte
   if (timerMessageErreur) clearTimeout(timerMessageErreur)
@@ -93,7 +99,13 @@ async function basculerActif(a: Administrateur) {
 }
 
 async function supprimer(a: Administrateur) {
-  if (!confirm(`Supprimer le compte de ${a.prenom} ${a.nom} ? Cette action est irréversible.`)) return
+  const confirme = await demander({
+    titre: 'Confirmer la suppression',
+    message: `Supprimer le compte de ${a.prenom} ${a.nom} ? Cette action est irréversible.`,
+    texteConfirmer: 'Supprimer',
+    dangereux: true,
+  })
+  if (!confirme) return
 
   suppressionEnCours.value = a.id
   try {
@@ -107,7 +119,12 @@ async function supprimer(a: Administrateur) {
 }
 
 async function renvoyerIdentifiants(a: Administrateur) {
-  if (!confirm(`Renvoyer un nouveau mot de passe temporaire à ${a.prenom} ${a.nom} ?`)) return
+  const confirme = await demander({
+    titre: 'Renvoyer les identifiants',
+    message: `Renvoyer un nouveau mot de passe temporaire à ${a.prenom} ${a.nom} ?`,
+    texteConfirmer: 'Renvoyer',
+  })
+  if (!confirme) return
 
   renvoiEnCours.value = a.id
   messageRenvoi.value = ''
@@ -133,7 +150,7 @@ async function renvoyerIdentifiants(a: Administrateur) {
 
 <template>
   <div>
-    <div class="flex items-start justify-between mb-6">
+    <div class="flex items-start justify-between mb-6 opacity-0" :class="estMonte ? 'animate-entree' : ''">
       <div>
         <h1 class="text-2xl font-bold text-slate-900">Gestion des administrateurs</h1>
         <p class="text-sm text-ink-light mt-1">Créer, modifier et gérer les comptes administrateur de la plateforme</p>
@@ -141,49 +158,52 @@ async function renvoyerIdentifiants(a: Administrateur) {
       <button
         type="button"
         @click="ouvrirCreation"
-        class="inline-flex items-center gap-2 bg-secondary hover:bg-primary text-white text-sm font-medium px-4 py-2.5 rounded-lg transition shrink-0"
+        class="inline-flex items-center gap-2 bg-secondary hover:bg-primary text-white text-sm font-medium px-4 py-2.5 rounded-lg transition active:scale-95 shrink-0"
       >
-        <IconPlus :size="16" stroke-width="2" />
+        <BaseIcon name="Plus" size="16" stroke-width="2" />
         Nouvel admin
       </button>
     </div>
 
     <!-- Cartes stats -->
     <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-      <div class="bg-card border border-slate-200 rounded-lg p-4">
-        <p class="text-2xl font-bold text-slate-900">{{ data?.stats.total ?? 0 }}</p>
-        <p class="text-xs text-ink-light">Total administrateurs</p>
-      </div>
-      <div class="bg-card border border-slate-200 rounded-lg p-4">
-        <p class="text-2xl font-bold text-accent">{{ data?.stats.actifs ?? 0 }}</p>
-        <p class="text-xs text-ink-light">Actifs</p>
-      </div>
-      <div class="bg-card border border-slate-200 rounded-lg p-4">
-        <p class="text-2xl font-bold text-warning">{{ data?.stats.inactifs ?? 0 }}</p>
-        <p class="text-xs text-ink-light">Inactifs</p>
-      </div>
-      <div class="bg-card border border-slate-200 rounded-lg p-4">
-        <p class="text-2xl font-bold text-secondary">{{ data?.stats.recents ?? 0 }}</p>
-        <p class="text-xs text-ink-light">Récents (&lt; 1 an)</p>
+      <div
+        v-for="(c, i) in [
+          { valeur: data?.stats.total ?? 0, label: 'Total administrateurs', couleur: 'text-slate-900' },
+          { valeur: data?.stats.actifs ?? 0, label: 'Actifs', couleur: 'text-accent' },
+          { valeur: data?.stats.inactifs ?? 0, label: 'Inactifs', couleur: 'text-warning' },
+          { valeur: data?.stats.recents ?? 0, label: 'Récents (< 1 an)', couleur: 'text-secondary' },
+        ]"
+        :key="c.label"
+        class="bg-card border border-slate-200 rounded-lg p-4 opacity-0 hover:-translate-y-0.5 hover:shadow-md transition-all duration-300"
+        :class="estMonte ? 'animate-entree' : ''"
+        :style="{ animationDelay: `${i * 70}ms` }"
+      >
+        <p class="text-2xl font-bold" :class="c.couleur">{{ c.valeur }}</p>
+        <p class="text-xs text-ink-light">{{ c.label }}</p>
       </div>
     </div>
 
-    <p v-if="messageErreur" class="text-sm text-danger mb-4">{{ messageErreur }}</p>
-    <p v-if="messageRenvoi" class="text-sm text-accent mb-4">{{ messageRenvoi }}</p>
+    <Transition name="fondu">
+      <p v-if="messageErreur" class="text-sm text-danger mb-4">{{ messageErreur }}</p>
+    </Transition>
+    <Transition name="fondu">
+      <p v-if="messageRenvoi" class="text-sm text-accent mb-4">{{ messageRenvoi }}</p>
+    </Transition>
 
     <!-- Recherche -->
-    <div class="relative mb-4 max-w-sm">
-      <IconSearch :size="16" class="text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" stroke-width="2" />
+    <div class="relative mb-4 max-w-sm opacity-0" :class="estMonte ? 'animate-entree' : ''" style="animation-delay: 280ms">
+      <BaseIcon name="Search" size="16" class="text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" stroke-width="2" />
       <input
         v-model="recherche"
         type="text"
         placeholder="Rechercher un administrateur..."
-        class="w-full pl-9 pr-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary focus:border-secondary"
+        class="w-full pl-9 pr-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary focus:border-secondary transition-shadow"
       />
     </div>
 
     <!-- Tableau -->
-    <div class="bg-card border border-slate-200 rounded-lg overflow-hidden">
+    <div class="bg-card border border-slate-200 rounded-lg overflow-hidden opacity-0" :class="estMonte ? 'animate-entree' : ''" style="animation-delay: 340ms">
       <table class="w-full text-sm">
         <thead class="bg-slate-50 border-b border-slate-200">
           <tr class="text-left text-xs font-semibold text-ink-light uppercase tracking-wide">
@@ -195,7 +215,7 @@ async function renvoyerIdentifiants(a: Administrateur) {
             <th class="px-5 py-3 text-right">Actions</th>
           </tr>
         </thead>
-        <tbody class="divide-y divide-slate-100">
+        <TransitionGroup tag="tbody" name="ligne" class="divide-y divide-slate-100">
           <tr v-for="a in administrateursFiltres" :key="a.id" class="hover:bg-slate-50/60">
             <td class="px-5 py-3">
               <div class="flex items-center gap-2.5">
@@ -222,29 +242,29 @@ async function renvoyerIdentifiants(a: Administrateur) {
               <div class="flex items-center justify-end gap-2">
                 <button
                   type="button"
-                  class="p-1.5 text-ink-light hover:text-secondary transition"
+                  class="p-1.5 text-ink-light hover:text-secondary hover:scale-110 active:scale-95 transition"
                   @click="ouvrirEdition(a)"
                   title="Modifier"
                 >
-                  <IconPencil :size="16" stroke-width="2" />
+                  <BaseIcon name="Edit2" size="16" stroke-width="2" />
                 </button>
                 <button
                   type="button"
                   :disabled="suppressionEnCours === a.id"
                   @click="supprimer(a)"
-                  class="p-1.5 text-ink-light hover:text-danger transition disabled:opacity-40"
+                  class="p-1.5 text-ink-light hover:text-danger hover:scale-110 active:scale-95 transition disabled:opacity-40"
                   title="Supprimer"
                 >
-                  <IconTrash :size="16" stroke-width="2" />
+                  <BaseIcon name="Trash2" size="16" stroke-width="2" />
                 </button>
                 <button
                   type="button"
                   :disabled="renvoiEnCours === a.id"
                   @click="renvoyerIdentifiants(a)"
-                  class="p-1.5 text-ink-light hover:text-secondary transition disabled:opacity-40"
+                  class="p-1.5 text-ink-light hover:text-secondary hover:scale-110 active:scale-95 transition disabled:opacity-40"
                   title="Renvoyer les identifiants"
                 >
-                  <IconMail :size="16" stroke-width="2" />
+                  <BaseIcon name="Mail" size="16" stroke-width="2" />
                 </button>
               </div>
             </td>
@@ -255,14 +275,53 @@ async function renvoyerIdentifiants(a: Administrateur) {
               Aucun administrateur trouvé.
             </td>
           </tr>
-        </tbody>
+        </TransitionGroup>
       </table>
     </div>
-    <ModaleNouvelAdmin
-      v-if="modaleOuverte"
-      :administrateur="administrateurEnEdition"
-      @close="fermerModale"
-      @saved="apresCreation"
-    />
+    <Transition name="modale-fondu">
+      <ModaleNouvelAdmin
+        v-if="modaleOuverte"
+        :administrateur="administrateurEnEdition"
+        @close="fermerModale"
+        @saved="apresCreation"
+      />
+    </Transition>
   </div>
 </template>
+
+<style scoped>
+@keyframes entree {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-entree {
+  animation: entree 0.5s ease-out forwards;
+}
+
+.ligne-enter-active,
+.ligne-leave-active {
+  transition: opacity 0.25s ease;
+}
+.ligne-enter-from,
+.ligne-leave-to {
+  opacity: 0;
+}
+
+.fondu-enter-active,
+.fondu-leave-active {
+  transition: opacity 0.2s ease;
+}
+.fondu-enter-from,
+.fondu-leave-to {
+  opacity: 0;
+}
+
+.modale-fondu-enter-active,
+.modale-fondu-leave-active {
+  transition: opacity 0.2s ease;
+}
+.modale-fondu-enter-from,
+.modale-fondu-leave-to {
+  opacity: 0;
+}
+</style>

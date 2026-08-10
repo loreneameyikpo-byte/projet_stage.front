@@ -9,6 +9,7 @@ const { apiFetch } = useApi()
 const { demander } = useConfirmation()
 
 interface Etudiant {
+  filiere: string | null
   id: string
   nom: string
   prenom: string
@@ -29,6 +30,10 @@ const { data: specialitesData } = await useAsyncData<{ specialites: { id_special
   apiFetch('/specialites')
 )
 
+const { data: filieresData } = await useAsyncData<{ filieres: { id_filiere: string; libelle: string }[] }>('filieres-select', () =>
+  apiFetch('/filieres')
+)
+
 const optionsPromotions = computed(
   () => promotionsData.value?.promotions.map((p) => ({ value: p.id, label: p.intitule })) ?? []
 )
@@ -36,8 +41,17 @@ const optionsSpecialites = computed(
   () => specialitesData.value?.specialites.map((s) => ({ value: s.id_specialite, label: s.libelle })) ?? []
 )
 
+const optionsFilieres = computed(
+  () => filieresData.value?.filieres.map((f) => ({ value: f.id_filiere, label: f.libelle })) ?? []
+)
+
 const recherche = ref('')
 const promotionFiltre = ref('')
+
+const optionsPromotionFiltre = computed(() => [
+  { value: '', label: 'Toutes les promotions' },
+  ...optionsPromotions.value,
+])
 const erreurSuppression = ref('')
 
 const etudiantsFiltres = computed(() => {
@@ -52,6 +66,11 @@ const etudiantsFiltres = computed(() => {
 function initiales(e: Etudiant) {
   return `${e.prenom.charAt(0)}${e.nom.charAt(0)}`.toUpperCase()
 }
+
+const estMonte = ref(false)
+onMounted(() => {
+  requestAnimationFrame(() => { estMonte.value = true })
+})
 
 const modaleOuverte = ref(false)
 const etudiantEnEdition = ref<Etudiant | null>(null)
@@ -90,7 +109,7 @@ async function supprimer(e: Etudiant) {
 
 <template>
   <div>
-    <div class="flex items-start justify-between mb-6">
+    <div class="flex items-start justify-between mb-6 opacity-0" :class="estMonte ? 'animate-entree' : ''">
       <div>
         <h1 class="text-2xl font-bold text-slate-900">Gestion des étudiants</h1>
         <p class="text-sm text-ink-light mt-1">{{ data?.utilisateurs.length ?? 0 }} étudiants enregistrés</p>
@@ -98,7 +117,7 @@ async function supprimer(e: Etudiant) {
       <button
         type="button"
         @click="ouvrirCreation"
-        class="inline-flex items-center gap-2 bg-secondary hover:bg-primary text-white text-sm font-medium px-4 py-2.5 rounded-lg transition shrink-0"
+        class="inline-flex items-center gap-2 bg-secondary hover:bg-primary text-white text-sm font-medium px-4 py-2.5 rounded-lg transition active:scale-95 shrink-0"
       >
         <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
@@ -109,7 +128,7 @@ async function supprimer(e: Etudiant) {
 
     <FormAlerte :message="erreurSuppression" />
 
-    <div class="flex gap-3 mb-6">
+    <div class="flex gap-3 mb-6 opacity-0" :class="estMonte ? 'animate-entree' : ''" style="animation-delay: 80ms">
       <div class="relative flex-1 max-w-sm">
         <svg class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z" />
@@ -118,30 +137,28 @@ async function supprimer(e: Etudiant) {
           v-model="recherche"
           type="text"
           placeholder="Rechercher par nom ou email..."
-          class="w-full pl-9 pr-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary"
+          class="w-full pl-9 pr-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary transition-shadow"
         />
       </div>
-      <select
+      <SelectPersonnalise
         v-model="promotionFiltre"
-        class="px-3.5 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary bg-white"
-      >
-        <option value="">Toutes les promotions</option>
-        <option v-for="p in promotionsData?.promotions" :key="p.id" :value="p.id">{{ p.intitule }}</option>
-      </select>
+        :options="optionsPromotionFiltre"
+        trigger-class="w-56 flex items-center justify-between gap-2 px-3.5 py-2.5 text-sm rounded-lg border border-slate-300 bg-card focus:outline-none focus:ring-2 focus:ring-secondary transition-shadow"
+      />
     </div>
 
-    <div class="bg-card border border-slate-200 rounded-lg overflow-hidden">
+    <div class="bg-card border border-slate-200 rounded-lg overflow-hidden opacity-0" :class="estMonte ? 'animate-entree' : ''" style="animation-delay: 140ms">
       <table class="w-full text-sm">
         <thead class="bg-slate-50 border-b border-slate-200">
           <tr class="text-left text-xs font-semibold text-ink-light uppercase tracking-wide">
             <th class="px-5 py-3">Étudiant</th>
             <th class="px-5 py-3">Email</th>
             <th class="px-5 py-3">Promotion</th>
-            <th class="px-5 py-3">Spécialité</th>
+            <th class="px-5 py-3">Filière</th>
             <th class="px-5 py-3 text-right">Actions</th>
           </tr>
         </thead>
-        <tbody class="divide-y divide-slate-100">
+        <TransitionGroup tag="tbody" name="ligne" class="divide-y divide-slate-100">
           <tr v-for="e in etudiantsFiltres" :key="e.id" class="hover:bg-slate-50/60">
             <td class="px-5 py-3">
               <div class="flex items-center gap-2.5">
@@ -154,19 +171,19 @@ async function supprimer(e: Etudiant) {
             <td class="px-5 py-3 text-secondary">{{ e.email }}</td>
             <td class="px-5 py-3 text-ink-light">{{ e.promotion?.intitule ?? '—' }}</td>
             <td class="px-5 py-3">
-              <span v-if="e.specialite" class="inline-flex px-2.5 py-1 rounded-full text-xs font-medium bg-secondary/10 text-secondary">
-                {{ e.specialite }}
+              <span v-if="e.filiere" class="inline-flex px-2.5 py-1 rounded-full text-xs font-medium bg-secondary/10 text-secondary">
+                {{ e.filiere }}
               </span>
               <span v-else class="text-ink-light">—</span>
             </td>
             <td class="px-5 py-3">
               <div class="flex items-center justify-end gap-2">
-                <button type="button" class="p-1.5 text-ink-light hover:text-secondary transition" @click="ouvrirEdition(e)">
+                <button type="button" class="p-1.5 text-ink-light hover:text-secondary hover:scale-110 active:scale-95 transition" @click="ouvrirEdition(e)">
                   <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                   </svg>
                 </button>
-                <button type="button" class="p-1.5 text-ink-light hover:text-danger transition" @click="supprimer(e)">
+                <button type="button" class="p-1.5 text-ink-light hover:text-danger hover:scale-110 active:scale-95 transition" @click="supprimer(e)">
                   <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                   </svg>
@@ -178,19 +195,50 @@ async function supprimer(e: Etudiant) {
           <tr v-if="!etudiantsFiltres.length">
             <td colspan="5" class="px-5 py-10 text-center text-ink-light text-sm">Aucun étudiant trouvé.</td>
           </tr>
-        </tbody>
+        </TransitionGroup>
       </table>
     </div>
 
-    <ModaleUtilisateur
-      v-if="modaleOuverte"
-      type="etudiant"
-      :utilisateur="etudiantEnEdition"
-      :id-role="rolesMap?.etudiant ?? ''"
-      :promotions="optionsPromotions"
-      :specialites="optionsSpecialites"
-      @close="fermerModale"
-      @saved="refresh"
-    />
+    <Transition name="modale-fondu">
+      <ModaleUtilisateur
+        v-if="modaleOuverte"
+        type="etudiant"
+        :utilisateur="etudiantEnEdition"
+        :id-role="rolesMap?.etudiant ?? ''"
+        :promotions="optionsPromotions"
+        :specialites="optionsSpecialites"
+        :filieres="optionsFilieres"
+        @close="fermerModale"
+        @saved="refresh"
+      />
+    </Transition>
   </div>
 </template>
+
+<style scoped>
+@keyframes entree {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-entree {
+  animation: entree 0.5s ease-out forwards;
+}
+
+.ligne-enter-active,
+.ligne-leave-active {
+  transition: opacity 0.25s ease;
+}
+.ligne-enter-from,
+.ligne-leave-to {
+  opacity: 0;
+}
+
+.modale-fondu-enter-active,
+.modale-fondu-leave-active {
+  transition: opacity 0.2s ease;
+}
+.modale-fondu-enter-from,
+.modale-fondu-leave-to {
+  opacity: 0;
+}
+</style>

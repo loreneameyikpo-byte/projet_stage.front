@@ -15,6 +15,7 @@ const props = defineProps<{
   idRole: string
   promotions?: { value: string; label: string }[]
   specialites: { value: string; label: string }[]
+  filieres?: { value: string; label: string }[]
 }>()
 
 const emit = defineEmits<{ close: []; saved: [] }>()
@@ -39,6 +40,7 @@ const email = ref(props.utilisateur?.email ?? '')
 const contacts = ref(props.utilisateur?.contacts ?? '')
 const idPromotion = ref(props.utilisateur?.promotion?.id ?? '')
 const idSpecialite = ref('')
+const idFiliere = ref((props.utilisateur as any)?.filiere?.id_filiere ?? '')
 const chargement = ref(false)
 const creationReussie = ref(false)
 
@@ -54,6 +56,7 @@ async function enregistrer() {
       contacts: contacts.value || null,
     }
     if (props.type === 'etudiant') body.id_promotion = idPromotion.value
+    if (props.type === 'etudiant') body.id_filiere = idFiliere.value
     if (props.type === 'etudiant' || props.type === 'encadreur' || props.type === 'jury_externe') body.id_specialite = idSpecialite.value
 
     if (estEdition.value && props.utilisateur) {
@@ -105,7 +108,17 @@ async function enregistrer() {
           />
 
           <FormSelect
-            v-if="type === 'etudiant' || type === 'encadreur'|| type === 'jury_externe'"
+            v-if="type === 'etudiant'"
+            v-model="idFiliere"
+            label="Filière"
+            :options="filieres ?? []"
+            placeholder="Sélectionner une filière"
+            :erreur="champ('id_filiere')"
+            requis
+          />
+
+          <FormSelect
+            v-if="type === 'encadreur'|| type === 'jury_externe'"
             v-model="idSpecialite"
             label="Spécialité"
             :options="specialites"
@@ -123,7 +136,7 @@ async function enregistrer() {
               :disabled="chargement"
               class="bg-secondary hover:bg-primary text-white text-sm font-medium px-5 py-2 rounded-lg transition disabled:opacity-50"
             >
-              {{ chargement ? 'Enregistrement...' : estEdition ? "Enregistrer" : `Créer l'${titres[type]}` }}
+              {{ chargement ? 'Enregistrement...' : estEdition ? "Enregistrer" : `Ajouter un ${titres[type]}` }}
             </button>
           </div>
         </form>

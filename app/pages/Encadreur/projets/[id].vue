@@ -27,8 +27,8 @@ const { data, refresh } = await useAsyncData(`projet-encadreur-${route.params.id
 )
 
 const badgesStatuts: Record<string, { label: string; classe: string }> = {
-  en_attente_validation: { label: 'En attente', classe: 'bg-warning/10 text-warning' },
-  corrections_demandees: { label: 'Corrections demandées', classe: 'bg-danger/10 text-danger' },
+  en_attente: { label: 'En attente', classe: 'bg-warning/10 text-warning' },
+  corrections: { label: 'Corrections demandées', classe: 'bg-danger/10 text-danger' },
   valide: { label: 'Validé', classe: 'bg-accent/10 text-accent' },
   presentation_planifiee: { label: 'Présentation planifiée', classe: 'bg-secondary/10 text-secondary' },
   presente: { label: 'Présenté', classe: 'bg-slate-200 text-slate-600' },
@@ -37,13 +37,13 @@ const badgesStatuts: Record<string, { label: string; classe: string }> = {
 const decisionInfo = computed(() => {
   const s = data.value?.projet.statut
   if (s === 'valide') return { texte: 'Ce projet a été validé. En attente de planification de la soutenance.', classe: 'bg-accent/5 text-accent border-accent/20' }
-  if (s === 'corrections_demandees') return { texte: 'Des corrections ont été demandées. En attente d\'une nouvelle version.', classe: 'bg-warning/5 text-warning border-warning/20' }
+  if (s === 'corrections') return { texte: 'Des corrections ont été demandées. En attente d\'une nouvelle version.', classe: 'bg-warning/5 text-warning border-warning/20' }
   if (s === 'presentation_planifiee' || s === 'presente') return { texte: 'Ce projet est déjà planifié ou soutenu. Aucune action n\'est plus possible.', classe: 'bg-slate-50 text-slate-600 border-slate-200' }
   return { texte: 'En attente de votre décision.', classe: 'bg-secondary/5 text-secondary border-secondary/20' }
 })
 
 const peutStatuer = computed(() =>
-  ['en_attente_validation', 'corrections_demandees'].includes(data.value?.projet.statut ?? '')
+  ['en_attente', 'corrections'].includes(data.value?.projet.statut ?? '')
 )
 
 function initiales(nom: string, prenom: string) {
@@ -163,7 +163,7 @@ async function statuer(decision: 'valider' | 'corriger') {
 
           <div class="space-y-4">
             <div v-for="v in data.projet.versions" :key="v.id" class="flex items-start gap-3">
-              <span class="w-2.5 h-2.5 rounded-full mt-1.5 shrink-0" :class="v.statut_version === 'validee' ? 'bg-accent' : v.statut_version === 'corrections_demandees' ? 'bg-warning' : 'bg-slate-300'"></span>
+              <span class="w-2.5 h-2.5 rounded-full mt-1.5 shrink-0" :class="v.statut_version === 'validee' ? 'bg-accent' : v.statut_version === 'corrections' ? 'bg-warning' : 'bg-slate-300'"></span>
               <div>
                 <div class="flex items-center gap-2">
                   <p class="text-sm font-medium text-slate-900">Version {{ v.numero_version }}</p>

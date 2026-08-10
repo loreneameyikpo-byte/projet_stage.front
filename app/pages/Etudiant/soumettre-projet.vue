@@ -16,6 +16,11 @@ const fichier = ref<File | null>(null)
 const enSurvol = ref(false)
 const chargement = ref(false)
 
+const estMonte = ref(false)
+onMounted(() => {
+  requestAnimationFrame(() => { estMonte.value = true })
+})
+
 function selectionnerFichier(e: Event) {
   const input = e.target as HTMLInputElement
   fichier.value = input.files?.[0] ?? null
@@ -55,12 +60,12 @@ async function soumettre() {
 
 <template>
   <div>
-    <h1 class="text-2xl font-bold text-slate-900">Soumettre un projet de fin de formation</h1>
-    <p class="text-sm text-ink-light mt-1 mb-6">
+    <h1 class="text-2xl font-bold text-slate-900 opacity-0" :class="estMonte ? 'animate-entree' : ''">Soumettre un projet de fin de formation</h1>
+    <p class="text-sm text-ink-light mt-1 mb-6 opacity-0" :class="estMonte ? 'animate-entree' : ''" style="animation-delay: 40ms">
       Remplissez le formulaire ci-dessous pour soumettre votre projet. Tous les champs marqués d'un astérisque sont obligatoires.
     </p>
 
-    <div class="bg-card border border-slate-200 rounded-lg p-6 max-w-2xl">
+    <div class="bg-card border border-slate-200 rounded-lg p-6 max-w-2xl opacity-0" :class="estMonte ? 'animate-entree' : ''" style="animation-delay: 100ms">
       <form @submit.prevent="soumettre" class="space-y-5">
         <FormAlerte :message="erreurGenerale" />
 
@@ -102,20 +107,22 @@ async function soumettre() {
             Document PDF du projet <span class="text-danger">*</span>
           </label>
           <label
-            class="flex flex-col items-center justify-center border-2 border-dashed rounded-lg py-10 cursor-pointer transition"
-            :class="enSurvol ? 'border-secondary bg-secondary/5' : 'border-slate-300 hover:border-secondary/50'"
+            class="flex flex-col items-center justify-center border-2 border-dashed rounded-lg py-10 cursor-pointer transition-all"
+            :class="enSurvol ? 'border-secondary bg-secondary/5 scale-[1.01]' : 'border-slate-300 hover:border-secondary/50'"
             @dragover.prevent="enSurvol = true"
             @dragleave.prevent="enSurvol = false"
             @drop.prevent="surDepot"
           >
             <input type="file" accept="application/pdf" class="hidden" @change="selectionnerFichier" />
-            <span class="inline-flex w-10 h-10 rounded-full bg-secondary/10 text-secondary items-center justify-center mb-3">
+            <span class="inline-flex w-10 h-10 rounded-full bg-secondary/10 text-secondary items-center justify-center mb-3 transition-transform" :class="enSurvol ? 'scale-110' : ''">
               <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
               </svg>
             </span>
-            <p v-if="!fichier" class="text-sm text-slate-700">Glissez-déposez votre fichier PDF ici</p>
-            <p v-else class="text-sm font-medium text-secondary">{{ fichier.name }}</p>
+            <Transition name="fondu" mode="out-in">
+              <p v-if="!fichier" key="vide" class="text-sm text-slate-700">Glissez-déposez votre fichier PDF ici</p>
+              <p v-else key="rempli" class="text-sm font-medium text-secondary">{{ fichier.name }}</p>
+            </Transition>
             <p class="text-xs text-ink-light mt-1">ou cliquez pour parcourir — Taille max : 20 Mo</p>
           </label>
           <p v-if="champ('rapport_pdf')" class="text-xs text-danger mt-1">{{ champ('rapport_pdf') }}</p>
@@ -128,15 +135,15 @@ async function soumettre() {
             <span class="text-slate-900">{{ authStore.utilisateur?.prenom }} {{ authStore.utilisateur?.nom }}</span>
             <span class="text-secondary">Promotion</span>
             <span class="text-slate-900">{{ authStore.utilisateur?.promotion?.intitule ?? '—' }}</span>
-            <span class="text-secondary">Spécialité</span>
-            <span class="text-slate-900">{{ authStore.utilisateur?.specialite ?? '—' }}</span>
+            <span class="text-secondary">Filière</span>
+            <span class="text-slate-900">{{ authStore.utilisateur?.filiere ?? '—' }}</span>
           </div>
         </div>
 
         <button
           type="submit"
           :disabled="chargement"
-          class="w-full inline-flex items-center justify-center gap-2 bg-secondary hover:bg-primary text-white text-sm font-medium py-2.5 rounded-lg transition disabled:opacity-50"
+          class="w-full inline-flex items-center justify-center gap-2 bg-secondary hover:bg-primary text-white text-sm font-medium py-2.5 rounded-lg transition-all hover:-translate-y-0.5 hover:shadow-md active:scale-[0.99] disabled:opacity-50 disabled:hover:translate-y-0"
         >
           <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
@@ -147,3 +154,22 @@ async function soumettre() {
     </div>
   </div>
 </template>
+
+<style scoped>
+@keyframes entree {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-entree {
+  animation: entree 0.5s ease-out forwards;
+}
+
+.fondu-enter-active,
+.fondu-leave-active {
+  transition: opacity 0.15s ease;
+}
+.fondu-enter-from,
+.fondu-leave-to {
+  opacity: 0;
+}
+</style>

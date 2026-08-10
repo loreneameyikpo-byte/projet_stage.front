@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { useApi } from '../Composables/useApi'
 import { useFormErrors } from '../Composables/useFormErrors'
-import { IconStack2 } from '@tabler/icons-vue'
 
 
 definePageMeta({ layout: 'dashboard' })
@@ -115,22 +114,18 @@ async function changerMotDePasse() {
         type="button"
         @click="onglet = 'infos'"
         class="inline-flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium transition"
-        :class="onglet === 'infos' ? 'bg-white text-slate-900 shadow-sm' : 'text-ink-light'"
+        :class="onglet === 'infos' ? 'bg-card text-slate-900 shadow-sm' : 'text-ink-light'"
       >
-        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-        </svg>
+        <BaseIcon name="User" size="16" stroke-width="2" class="w-4 h-4" />
         Informations personnelles
       </button>
       <button
         type="button"
         @click="onglet = 'mot_de_passe'"
         class="inline-flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium transition"
-        :class="onglet === 'mot_de_passe' ? 'bg-white text-slate-900 shadow-sm' : 'text-ink-light'"
+        :class="onglet === 'mot_de_passe' ? 'bg-card text-slate-900 shadow-sm' : 'text-ink-light'"
       >
-        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-        </svg>
+        <BaseIcon name="Lock" size="16" stroke-width="2" class="w-4 h-4" />
         Mot de passe
       </button>
     </div>
@@ -147,8 +142,8 @@ async function changerMotDePasse() {
       <p class="font-medium text-slate-900">{{ authStore.utilisateur?.promotion?.intitule ?? '—' }}</p>
     </div>
     <div>
-      <p class="text-xs text-ink-light">Spécialité</p>
-      <p class="font-medium text-slate-900">{{ authStore.utilisateur?.specialite ?? '—' }}</p>
+      <p class="text-xs text-ink-light">Filière</p>
+      <p class="font-medium text-slate-900">{{ authStore.utilisateur?.filiere ?? '—' }}</p>
     </div>
   </div>
   <p class="text-xs text-ink-light">
@@ -188,7 +183,7 @@ async function changerMotDePasse() {
 
         <FormInput v-model="mdpActuel" label="Mot de passe actuel" type="password" :erreur="champMdp('mot_de_passe_actuel')" requis />
         <FormInput v-model="nouveauMdp" label="Nouveau mot de passe" type="password" :erreur="champMdp('mot_de_passe')" requis />
-        <FormInput v-model="confirmationMdp" label="Confirmer le mot de passe" type="password" requis />
+        <FormInput v-model="confirmationMdp" label="Confirmer le mot de passe" type="password" :erreur="champMdp('mot_de_passe_confirmation')" requis />
 
         <button
           type="submit"

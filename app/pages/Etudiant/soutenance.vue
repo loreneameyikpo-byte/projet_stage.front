@@ -33,33 +33,38 @@ const badgesStatuts: Record<string, { label: string; classe: string }> = {
   presentation_planifiee: { label: 'Présentation planifiée', classe: 'bg-secondary/10 text-secondary' },
   presente: { label: 'Présenté', classe: 'bg-slate-200 text-slate-600' },
 }
+
+const estMonte = ref(false)
+onMounted(() => {
+  requestAnimationFrame(() => { estMonte.value = true })
+})
 </script>
 
 <template>
   <div>
-    <h1 class="text-2xl font-bold text-slate-900">Ma soutenance</h1>
-    <p class="text-sm text-ink-light mt-1 mb-6">Consultez les informations concernant votre soutenance de fin de formation.</p>
+    <h1 class="text-2xl font-bold text-slate-900 opacity-0" :class="estMonte ? 'animate-entree' : ''">Ma soutenance</h1>
+    <p class="text-sm text-ink-light mt-1 mb-6 opacity-0" :class="estMonte ? 'animate-entree' : ''" style="animation-delay: 40ms">Consultez les informations concernant votre soutenance de fin de formation.</p>
 
-    <div v-if="!projet" class="bg-card border border-slate-200 rounded-lg p-10 text-center text-sm text-ink-light">
+    <div v-if="!projet" class="bg-card border border-slate-200 rounded-lg p-10 text-center text-sm text-ink-light opacity-0" :class="estMonte ? 'animate-entree' : ''" style="animation-delay: 100ms">
       Aucun projet à ce jour.
     </div>
 
     <div v-else class="max-w-3xl">
-      <div class="bg-card border border-slate-200 rounded-lg p-6 mb-4">
+      <div class="bg-card border border-slate-200 rounded-lg p-6 mb-4 opacity-0" :class="estMonte ? 'animate-entree' : ''" style="animation-delay: 100ms">
         <div class="flex items-center gap-3">
           <p class="font-semibold text-slate-900">{{ projet.titre }}</p>
-          <span class="inline-flex px-2.5 py-1 rounded-full text-xs font-medium" :class="badgesStatuts[projet.statut]?.classe">
+          <span class="inline-flex px-2.5 py-1 rounded-full text-xs font-medium transition-colors" :class="badgesStatuts[projet.statut]?.classe">
             {{ badgesStatuts[projet.statut]?.label }}
           </span>
         </div>
       </div>
 
-      <div v-if="!presentation" class="bg-card border border-slate-200 rounded-lg p-10 text-center">
+      <div v-if="!presentation" class="bg-card border border-slate-200 rounded-lg p-10 text-center opacity-0" :class="estMonte ? 'animate-entree' : ''" style="animation-delay: 160ms">
         <p class="text-sm text-ink-light">Aucune soutenance planifiée pour le moment.</p>
       </div>
 
       <div v-else class="grid sm:grid-cols-2 gap-4 mb-6">
-        <div class="bg-card border border-slate-200 rounded-lg p-5">
+        <div class="bg-card border border-slate-200 rounded-lg p-5 opacity-0" :class="estMonte ? 'animate-entree' : ''" style="animation-delay: 160ms">
           <h2 class="font-semibold text-slate-900 text-sm mb-4">Détails de la séance</h2>
           <div class="space-y-3">
             <div class="flex items-center gap-2.5">
@@ -101,9 +106,9 @@ const badgesStatuts: Record<string, { label: string; classe: string }> = {
           </div>
         </div>
 
-        <div class="bg-card border border-slate-200 rounded-lg p-5">
+        <div class="bg-card border border-slate-200 rounded-lg p-5 opacity-0" :class="estMonte ? 'animate-entree' : ''" style="animation-delay: 220ms">
           <h2 class="font-semibold text-slate-900 text-sm mb-4">Composition du jury</h2>
-          <div class="space-y-3">
+          <TransitionGroup tag="div" name="ligne" class="space-y-3">
             <div v-for="m in presentation.jury.membres" :key="m.id_utilisateur" class="flex items-center gap-2.5">
               <span class="w-8 h-8 rounded-full bg-secondary/10 text-secondary text-xs font-semibold flex items-center justify-center shrink-0">
                 {{ m.prenom.charAt(0) }}{{ m.nom.charAt(0) }}
@@ -115,11 +120,11 @@ const badgesStatuts: Record<string, { label: string; classe: string }> = {
                 </span>
               </div>
             </div>
-          </div>
+          </TransitionGroup>
         </div>
       </div>
 
-      <p v-if="presentation" class="flex items-start gap-2 bg-secondary/5 border border-secondary/20 text-secondary text-sm rounded-lg px-4 py-3">
+      <p v-if="presentation" class="flex items-start gap-2 bg-secondary/5 border border-secondary/20 text-secondary text-sm rounded-lg px-4 py-3 opacity-0" :class="estMonte ? 'animate-entree' : ''" style="animation-delay: 280ms">
         <svg class="w-4 h-4 shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
@@ -131,3 +136,22 @@ const badgesStatuts: Record<string, { label: string; classe: string }> = {
     </div>
   </div>
 </template>
+
+<style scoped>
+@keyframes entree {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-entree {
+  animation: entree 0.5s ease-out forwards;
+}
+
+.ligne-enter-active,
+.ligne-leave-active {
+  transition: opacity 0.25s ease;
+}
+.ligne-enter-from,
+.ligne-leave-to {
+  opacity: 0;
+}
+</style>

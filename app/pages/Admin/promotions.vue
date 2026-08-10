@@ -26,6 +26,11 @@ const { data, refresh } = await useAsyncData('promotions', () =>
 
 const recherche = ref('')
 
+const estMonte = ref(false)
+onMounted(() => {
+  requestAnimationFrame(() => { estMonte.value = true })
+})
+
 const promotionsFiltrees = computed(() => {
   if (!data.value) return []
   const terme = recherche.value.toLowerCase()
@@ -48,6 +53,9 @@ const promotionEnEdition = ref<Promotion | null>(null)
 const intitule = ref('')
 const annee = ref('')
 const idNiveau = ref('')
+const optionsNiveaux = computed(
+  () => data.value?.niveaux.map((n: { id_niveau: string; libelle: string }) => ({ value: n.id_niveau, label: n.libelle })) ?? []
+)
 const { erreurGenerale, traiter, reinitialiser, champ } = useFormErrors()
 const chargement = ref(false)
 
@@ -112,7 +120,7 @@ async function supprimer(p: Promotion) {
 
 <template>
   <div>
-    <div class="flex items-start justify-between mb-6">
+    <div class="flex items-start justify-between mb-6 opacity-0" :class="estMonte ? 'animate-entree' : ''">
       <div>
         <FormAlerte :message="erreurSuppression"  class="mb-4"/>
         <div>
@@ -123,7 +131,7 @@ async function supprimer(p: Promotion) {
       <button
         type="button"
         @click="ouvrirCreation"
-        class="inline-flex items-center gap-2 bg-secondary hover:bg-primary text-white text-sm font-medium px-4 py-2.5 rounded-lg transition shrink-0"
+        class="inline-flex items-center gap-2 bg-secondary hover:bg-primary text-white text-sm font-medium px-4 py-2.5 rounded-lg transition active:scale-95 shrink-0"
       >
         <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
@@ -132,7 +140,7 @@ async function supprimer(p: Promotion) {
       </button>
     </div>
 
-    <div class="relative mb-6 max-w-sm">
+    <div class="relative mb-6 max-w-sm opacity-0" :class="estMonte ? 'animate-entree' : ''" style="animation-delay: 80ms">
       <svg class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z" />
       </svg>
@@ -140,12 +148,12 @@ async function supprimer(p: Promotion) {
         v-model="recherche"
         type="text"
         placeholder="Rechercher par nom, niveau ou année..."
-        class="w-full pl-9 pr-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary"
+        class="w-full pl-9 pr-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary transition-shadow"
       />
     </div>
 
-    <div class="space-y-6">
-      <div v-for="(promos, niveau) in groupesParNiveau" :key="niveau">
+    <TransitionGroup tag="div" name="groupe" class="space-y-6">
+      <div v-for="(promos, niveau, i) in groupesParNiveau" :key="niveau" class="opacity-0" :class="estMonte ? 'animate-entree' : ''" :style="{ animationDelay: `${140 + i * 80}ms` }">
         <h2 class="text-sm font-semibold text-slate-900 mb-2">
           {{ niveau }} <span class="text-ink-light font-normal">({{ promos.length }})</span>
         </h2>
@@ -160,7 +168,7 @@ async function supprimer(p: Promotion) {
                 <th class="px-5 py-3 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody class="divide-y divide-slate-100">
+            <TransitionGroup tag="tbody" name="ligne" class="divide-y divide-slate-100">
               <tr v-for="p in promos" :key="p.id" class="hover:bg-slate-50/60">
                 <td class="px-5 py-3 font-medium text-slate-900">{{ p.intitule }}</td>
                 <td class="px-5 py-3">
@@ -171,12 +179,12 @@ async function supprimer(p: Promotion) {
                 <td class="px-5 py-3 text-ink-light">{{ p.nb_etudiants }}</td>
                 <td class="px-5 py-3">
                   <div class="flex items-center justify-end gap-2">
-                    <button type="button" class="p-1.5 text-ink-light hover:text-secondary transition" @click="ouvrirEdition(p)">
+                    <button type="button" class="p-1.5 text-ink-light hover:text-secondary hover:scale-110 active:scale-95 transition" @click="ouvrirEdition(p)">
                       <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                       </svg>
                     </button>
-                    <button type="button" class="p-1.5 text-ink-light hover:text-danger transition" @click="supprimer(p)">
+                    <button type="button" class="p-1.5 text-ink-light hover:text-danger hover:scale-110 active:scale-95 transition" @click="supprimer(p)">
                       <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                       </svg>
@@ -184,7 +192,7 @@ async function supprimer(p: Promotion) {
                   </div>
                 </td>
               </tr>
-            </tbody>
+            </TransitionGroup>
           </table>
         </div>
       </div>
@@ -192,52 +200,97 @@ async function supprimer(p: Promotion) {
       <p v-if="!promotionsFiltrees.length" class="text-sm text-ink-light text-center py-10">
         Aucune promotion trouvée.
       </p>
-    </div>
+    </TransitionGroup>
 
     <!-- Modale -->
-    <div v-if="modaleOuverte" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4">
-      <div class="w-full max-w-md bg-white rounded-xl shadow-xl">
-        <div class="px-6 pt-6 pb-2">
-          <h2 class="text-lg font-bold text-slate-900">
-            {{ promotionEnEdition ? 'Modifier la promotion' : 'Nouvelle promotion' }}
-          </h2>
-        </div>
+    <Transition name="modale-fondu">
+      <div v-if="modaleOuverte" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4">
+        <Transition name="panneau-zoom" appear>
+          <div class="w-full max-w-md bg-card rounded-xl shadow-xl">
+            <div class="px-6 pt-6 pb-2">
+              <h2 class="text-lg font-bold text-slate-900">
+                {{ promotionEnEdition ? 'Modifier la promotion' : 'Nouvelle promotion' }}
+              </h2>
+            </div>
 
-        <form @submit.prevent="enregistrer" class="px-6 py-4 space-y-4">
-          <FormAlerte :message="erreurGenerale" />
+            <form @submit.prevent="enregistrer" class="px-6 py-4 space-y-4">
+              <FormAlerte :message="erreurGenerale" />
 
-          <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1.5">
-              Niveau <span class="text-danger">*</span>
-            </label>
-            <select
-              v-model="idNiveau"
-              required
-              class="w-full rounded-lg border px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2"
-              :class="champ('id_niveau') ? 'border-danger focus:ring-danger/40' : 'border-slate-300 focus:ring-secondary'"
-            >
-              <option value="" disabled>Sélectionner un niveau</option>
-              <option v-for="n in data?.niveaux" :key="n.id_niveau" :value="n.id_niveau">{{ n.libelle }}</option>
-            </select>
-            <p v-if="champ('id_niveau')" class="text-xs text-danger mt-1">{{ champ('id_niveau') }}</p>
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                  Niveau <span class="text-danger">*</span>
+                </label>
+                <SelectPersonnalise
+                  v-model="idNiveau"
+                  :options="optionsNiveaux"
+                  placeholder="Sélectionner un niveau"
+                  :erreur="champ('id_niveau')"
+                />
+                <p v-if="champ('id_niveau')" class="text-xs text-danger mt-1">{{ champ('id_niveau') }}</p>
+              </div>
+
+              <FormInput v-model="annee" label="Année académique" placeholder="2025-2026" :erreur="champ('annee')" requis />
+
+              <div class="flex items-center justify-end gap-4 pt-3 border-t border-slate-100">
+                <button type="button" @click="modaleOuverte = false" class="text-sm font-medium text-secondary hover:text-primary">
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  :disabled="chargement"
+                  class="bg-secondary hover:bg-primary text-white text-sm font-medium px-5 py-2 rounded-lg transition active:scale-95 disabled:opacity-50"
+                >
+                  {{ chargement ? 'Enregistrement...' : 'Créer' }}
+                </button>
+              </div>
+            </form>
           </div>
-
-          <FormInput v-model="annee" label="Année académique" placeholder="2025-2026" :erreur="champ('annee')" requis />
-
-          <div class="flex items-center justify-end gap-4 pt-3 border-t border-slate-100">
-            <button type="button" @click="modaleOuverte = false" class="text-sm font-medium text-secondary hover:text-primary">
-              Annuler
-            </button>
-            <button
-              type="submit"
-              :disabled="chargement"
-              class="bg-secondary hover:bg-primary text-white text-sm font-medium px-5 py-2 rounded-lg transition disabled:opacity-50"
-            >
-              {{ chargement ? 'Enregistrement...' : 'Créer' }}
-            </button>
-          </div>
-        </form>
+        </Transition>
       </div>
-    </div>
+    </Transition>
   </div>
 </template>
+
+<style scoped>
+@keyframes entree {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-entree {
+  animation: entree 0.5s ease-out forwards;
+}
+
+.groupe-enter-active,
+.groupe-leave-active,
+.ligne-enter-active,
+.ligne-leave-active {
+  transition: opacity 0.25s ease;
+}
+.groupe-enter-from,
+.groupe-leave-to,
+.ligne-enter-from,
+.ligne-leave-to {
+  opacity: 0;
+}
+
+.modale-fondu-enter-active,
+.modale-fondu-leave-active {
+  transition: opacity 0.2s ease;
+}
+.modale-fondu-enter-from,
+.modale-fondu-leave-to {
+  opacity: 0;
+}
+
+.panneau-zoom-enter-active {
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+.panneau-zoom-leave-active {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.panneau-zoom-enter-from,
+.panneau-zoom-leave-to {
+  opacity: 0;
+  transform: scale(0.95) translateY(6px);
+}
+</style>

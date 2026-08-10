@@ -1,6 +1,10 @@
 <template>
-  <NuxtLayout>
-    <NuxtRouteAnnouncer />
-    <NuxtPage />
-  </NuxtLayout>
+  <div>
+    <ChargementGlobal />
+    <ModaleConfirmation />
+    <AlerteDialog />
+    <NuxtLayout>
+      <NuxtPage />
+    </NuxtLayout>
+  </div>
 </template>

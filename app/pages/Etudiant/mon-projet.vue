@@ -63,6 +63,11 @@ const fichier = ref<File | null>(null)
 const chargement = ref(false)
 const modaleOuverte = ref(false)
 
+const estMonte = ref(false)
+onMounted(() => {
+  requestAnimationFrame(() => { estMonte.value = true })
+})
+
 function selectionnerFichier(e: Event) {
   fichier.value = (e.target as HTMLInputElement).files?.[0] ?? null
 }
@@ -92,11 +97,11 @@ async function deposerNouvelleVersion() {
 
 <template>
   <div>
-    <div v-if="!idProjet" class="bg-card border border-slate-200 rounded-lg p-10 text-center">
+    <div v-if="!idProjet" class="bg-card border border-slate-200 rounded-lg p-10 text-center opacity-0" :class="estMonte ? 'animate-entree' : ''">
       <p class="text-sm text-ink-light mb-4">Vous n'avez pas encore soumis de projet.</p>
       <NuxtLink
   to="/etudiant/soumettre-projet"
-  class="inline-flex items-center gap-2 bg-secondary hover:bg-primary text-white text-sm font-medium px-5 py-2.5 rounded-lg transition"
+  class="inline-flex items-center gap-2 bg-secondary hover:bg-primary text-white text-sm font-medium px-5 py-2.5 rounded-lg transition-all hover:-translate-y-0.5 hover:shadow-md"
 >
   Soumettre mon projet
   <span aria-hidden="true">→</span>
@@ -104,19 +109,19 @@ async function deposerNouvelleVersion() {
     </div>
 
     <div v-else-if="data?.projet">
-      <div class="flex items-start justify-between mb-1">
+      <div class="flex items-start justify-between mb-1 opacity-0" :class="estMonte ? 'animate-entree' : ''">
         <h1 class="text-xl font-bold text-slate-900">{{ data.projet.titre }}</h1>
-        <span class="inline-flex px-3 py-1.5 rounded-full text-xs font-medium shrink-0" :class="badgesStatuts[data.projet.statut]?.classe">
+        <span class="inline-flex px-3 py-1.5 rounded-full text-xs font-medium shrink-0 transition-colors" :class="badgesStatuts[data.projet.statut]?.classe">
           {{ badgesStatuts[data.projet.statut]?.label }}
         </span>
       </div>
-      <p class="text-sm text-secondary mb-6">Déposé le {{ data.projet.created_at }}</p>
+      <p class="text-sm text-secondary mb-6 opacity-0" :class="estMonte ? 'animate-entree' : ''" style="animation-delay: 40ms">Déposé le {{ data.projet.created_at }}</p>
 
       <div class="grid lg:grid-cols-3 gap-6">
         <!-- Colonne principale-->
         <div class="lg:col-span-2 space-y-6">
           <!-- Informations générales -->
-          <div class="bg-card border border-slate-200 rounded-lg p-6">
+          <div class="bg-card border border-slate-200 rounded-lg p-6 opacity-0" :class="estMonte ? 'animate-entree' : ''" style="animation-delay: 100ms">
             <h2 class="flex items-center gap-2 font-semibold text-slate-900 mb-5">
               <svg class="w-4 h-4 text-secondary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -162,7 +167,7 @@ async function deposerNouvelleVersion() {
           </div>
 
           <!-- Historique des versions -->
-          <div class="bg-card border border-slate-200 rounded-lg p-6">
+          <div class="bg-card border border-slate-200 rounded-lg p-6 opacity-0" :class="estMonte ? 'animate-entree' : ''" style="animation-delay: 160ms">
             <div class="flex items-center justify-between mb-4">
               <h2 class="flex items-center gap-2 font-semibold text-slate-900">
                 <svg class="w-4 h-4 text-secondary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -171,16 +176,16 @@ async function deposerNouvelleVersion() {
                 Historique des versions
               </h2>
               <button
-                v-if="data.projet.statut === 'corrections_demandees'"
+                v-if="data.projet.statut === 'corrections'"
                 type="button"
                 @click="modaleOuverte = true"
-                class="text-xs font-medium text-secondary hover:text-primary"
+                class="text-xs font-medium text-secondary hover:text-primary active:scale-95 transition"
               >
                 + Nouvelle version
               </button>
             </div>
 
-            <div class="space-y-4">
+            <TransitionGroup tag="div" name="ligne" class="space-y-4">
               <div v-for="v in data.projet.versions" :key="v.id" class="flex items-start gap-3">
                 <span class="w-2.5 h-2.5 rounded-full mt-1.5 shrink-0" :class="v.statut_version === 'validee' ? 'bg-accent' : v.statut_version === 'corrections_demandees' ? 'bg-warning' : 'bg-slate-300'"></span>
                 <div>
@@ -202,11 +207,11 @@ async function deposerNouvelleVersion() {
                   </a>
                 </div>
               </div>
-            </div>
+            </TransitionGroup>
           </div>
 
           <!-- Observations -->
-          <div class="bg-card border border-slate-200 rounded-lg p-6">
+          <div class="bg-card border border-slate-200 rounded-lg p-6 opacity-0" :class="estMonte ? 'animate-entree' : ''" style="animation-delay: 220ms">
             <h2 class="flex items-center gap-2 font-semibold text-slate-900 mb-4">
               <svg class="w-4 h-4 text-secondary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
@@ -214,8 +219,8 @@ async function deposerNouvelleVersion() {
               Observations de l'encadreur
             </h2>
 
-            <div class="space-y-4">
-              <div v-for="o in data.projet.observations" :key="o.id" class="bg-slate-50 rounded-lg p-4">
+            <TransitionGroup tag="div" name="ligne" class="space-y-4">
+              <div v-for="o in data.projet.observations" :key="o.id" class="bg-slate-50 rounded-lg p-4 hover:bg-slate-100/70 transition-colors">
                 <div class="flex items-center gap-2 mb-1.5">
                   <span class="text-sm font-medium text-slate-900">{{ o.auteur.prenom }} {{ o.auteur.nom }}</span>
                   <span class="text-xs px-1.5 py-0.5 bg-secondary/10 text-secondary rounded">Encadreur</span>
@@ -226,14 +231,14 @@ async function deposerNouvelleVersion() {
               <p v-if="!data.projet.observations.length" class="text-sm text-ink-light text-center py-6">
                 Aucune observation pour l'instant.
               </p>
-            </div>
+            </TransitionGroup>
           </div>
         </div>
 
         <!-- Colonne latérale  -->
         <div class="space-y-6">
           <!-- Soutenance -->
-          <div class="bg-card border border-slate-200 rounded-lg p-5">
+          <div class="bg-card border border-slate-200 rounded-lg p-5 opacity-0" :class="estMonte ? 'animate-entree' : ''" style="animation-delay: 280ms">
             <h3 class="flex items-center gap-2 font-semibold text-slate-900 text-sm mb-4">
               <svg class="w-4 h-4 text-secondary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -284,7 +289,7 @@ async function deposerNouvelleVersion() {
           </div>
 
           <!-- Encadrement -->
-          <div class="bg-card border border-slate-200 rounded-lg p-5">
+          <div class="bg-card border border-slate-200 rounded-lg p-5 opacity-0" :class="estMonte ? 'animate-entree' : ''" style="animation-delay: 340ms">
             <h3 class="flex items-center gap-2 font-semibold text-slate-900 text-sm mb-4">
               <svg class="w-4 h-4 text-secondary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -308,32 +313,76 @@ async function deposerNouvelleVersion() {
     </div>
 
     <!-- Modale nouvelle version -->
-    <div v-if="modaleOuverte" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4">
-      <div class="w-full max-w-md bg-white rounded-xl shadow-xl">
-        <div class="px-6 pt-6 pb-2">
-          <h2 class="text-lg font-bold text-slate-900">Déposer une nouvelle version</h2>
-        </div>
-        <form @submit.prevent="deposerNouvelleVersion" class="px-6 py-4 space-y-4">
-          <FormAlerte :message="erreurGenerale" />
+    <Transition name="modale-fondu">
+      <div v-if="modaleOuverte" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4">
+        <Transition name="panneau-zoom" appear>
+          <div class="w-full max-w-md bg-white rounded-xl shadow-xl">
+            <div class="px-6 pt-6 pb-2">
+              <h2 class="text-lg font-bold text-slate-900">Déposer une nouvelle version</h2>
+            </div>
+            <form @submit.prevent="deposerNouvelleVersion" class="px-6 py-4 space-y-4">
+              <FormAlerte :message="erreurGenerale" />
 
-          <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1.5">Nouveau fichier PDF</label>
-            <input type="file" accept="application/pdf" required @change="selectionnerFichier" class="w-full text-sm" />
-            <p v-if="champ('rapport_pdf')" class="text-xs text-danger mt-1">{{ champ('rapport_pdf') }}</p>
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1.5">Nouveau fichier PDF</label>
+                <input type="file" accept="application/pdf" required @change="selectionnerFichier" class="w-full text-sm" />
+                <p v-if="champ('rapport_pdf')" class="text-xs text-danger mt-1">{{ champ('rapport_pdf') }}</p>
+              </div>
+
+              <FormInput v-model="depotGithub" label="Lien GitHub (optionnel)" :erreur="champ('depot_github')" />
+
+              <div class="flex items-center justify-end gap-4 pt-3 border-t border-slate-100">
+                <button type="button" @click="modaleOuverte = false" class="text-sm font-medium text-secondary hover:text-primary">
+                  Annuler
+                </button>
+                <button type="submit" :disabled="chargement" class="bg-secondary hover:bg-primary text-white text-sm font-medium px-5 py-2 rounded-lg transition active:scale-95 disabled:opacity-50">
+                  {{ chargement ? 'Envoi...' : 'Déposer' }}
+                </button>
+              </div>
+            </form>
           </div>
-
-          <FormInput v-model="depotGithub" label="Lien GitHub (optionnel)" :erreur="champ('depot_github')" />
-
-          <div class="flex items-center justify-end gap-4 pt-3 border-t border-slate-100">
-            <button type="button" @click="modaleOuverte = false" class="text-sm font-medium text-secondary hover:text-primary">
-              Annuler
-            </button>
-            <button type="submit" :disabled="chargement" class="bg-secondary hover:bg-primary text-white text-sm font-medium px-5 py-2 rounded-lg transition disabled:opacity-50">
-              {{ chargement ? 'Envoi...' : 'Déposer' }}
-            </button>
-          </div>
-        </form>
+        </Transition>
       </div>
-    </div>
+    </Transition>
   </div>
 </template>
+
+<style scoped>
+@keyframes entree {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-entree {
+  animation: entree 0.5s ease-out forwards;
+}
+
+.ligne-enter-active,
+.ligne-leave-active {
+  transition: opacity 0.25s ease;
+}
+.ligne-enter-from,
+.ligne-leave-to {
+  opacity: 0;
+}
+
+.modale-fondu-enter-active,
+.modale-fondu-leave-active {
+  transition: opacity 0.2s ease;
+}
+.modale-fondu-enter-from,
+.modale-fondu-leave-to {
+  opacity: 0;
+}
+
+.panneau-zoom-enter-active {
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+.panneau-zoom-leave-active {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.panneau-zoom-enter-from,
+.panneau-zoom-leave-to {
+  opacity: 0;
+  transform: scale(0.95) translateY(6px);
+}
+</style>

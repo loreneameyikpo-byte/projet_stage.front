@@ -12,6 +12,8 @@ export async function ensureCsrfCookie(): Promise<void> {
   return Promise.resolve();
 }
 
+
+
 export function useApi() {
   const config = useRuntimeConfig();
   const tokenCookie = useCookie("auth_token");
@@ -40,6 +42,8 @@ export function useApi() {
       },
     });
   }
+
+  
 
   return { apiFetch };
 }
