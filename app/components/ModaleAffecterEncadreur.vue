@@ -39,7 +39,7 @@ async function affecter() {
 
 <template>
   <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4">
-    <div class="w-full max-w-md bg-white rounded-xl shadow-xl">
+    <div class="w-full max-w-md bg-card rounded-xl shadow-xl">
       <div class="px-6 pt-6 pb-2">
         <h2 class="text-lg font-bold text-slate-900">Affecter un encadreur</h2>
         <p class="text-sm text-ink-light mt-1">{{ projet.titre }}</p>

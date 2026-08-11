@@ -104,7 +104,7 @@ async function changerStatut(nouveauStatut: string) {
     <div v-else-if="error" class="text-sm text-danger">Projet introuvable.</div>
 
     <div v-else-if="data?.projet">
-      <div class="flex items-start justify-between mb-6 opacity-0" :class="estMonte ? 'animate-entree' : ''">
+      <div class="relative z-20 flex items-start justify-between mb-6 opacity-0" :class="estMonte ? 'animate-entree' : ''">
         <div>
           <h1 class="text-2xl font-bold text-slate-900">{{ data.projet.titre }}</h1>
           <p class="text-sm text-ink-light mt-1">

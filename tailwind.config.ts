@@ -2,7 +2,23 @@ import type { Config } from 'tailwindcss'
 
 export default <Partial<Config>>{
   darkMode: 'class',
-  content: [],
+  content: [
+    // Nuxt 4 : structure par défaut avec dossier app/
+    './app/components/**/*.{vue,js,ts}',
+    './app/layouts/**/*.vue',
+    './app/pages/**/*.vue',
+    './app/plugins/**/*.{js,ts}',
+    './app/app.vue',
+    './app/error.vue',
+    './app/**/*.vue',
+    // Au cas où certains fichiers seraient restés à la racine (ancienne structure)
+    './components/**/*.{vue,js,ts}',
+    './layouts/**/*.vue',
+    './pages/**/*.vue',
+    './plugins/**/*.{js,ts}',
+    './app.vue',
+    './error.vue',
+  ],
   theme: {
     extend: {
       colors: {

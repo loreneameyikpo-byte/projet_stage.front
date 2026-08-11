@@ -36,17 +36,6 @@ interface Presentation {
   jury: { membres: MembreJury[] }
 }
 
-function dateHeureComplete(p: { date_presentation: string; heure_presentation: string }): Date {
-  return new Date(`${p.date_presentation}T${p.heure_presentation}`)
-}
-
-const soutenancesAVenir = computed(() =>
-  [...(data.value?.presentations ?? [])]
-    .filter((p) => dateHeureComplete(p) >= new Date())
-    .sort((a, b) => dateHeureComplete(a).getTime() - dateHeureComplete(b).getTime())
-    .slice(0, 3)
-)
-
 // --- Données partagées ---
 const { data: projetsData } = await useAsyncData<{ projets: Projet[] }>('projets-valides', async () => {
   const res = await apiFetch<{ projets: (Projet & { statut: string; presentation?: unknown })[] }>('/projets')
@@ -95,7 +84,7 @@ const verificationEnCours = ref(false)
 async function verifierDisponibilite() {
   if (!date.value || !heure.value || !idSalle.value) return
 
-  const aujourdHui = new Date().toISOString().split('T')[0] ?? ''
+  const aujourdHui = new Date().toISOString().slice(0, 10)
   if (date.value < aujourdHui) {
     await alerter({
       titre: 'Date invalide',
@@ -143,11 +132,20 @@ async function planifier() {
     return
   }
 
-  const aujourdHui = new Date().toISOString().split('T')[0] ?? ''
+  const aujourdHui = new Date().toISOString().slice(0, 10)
   if (date.value < aujourdHui) {
     await alerter({
       titre: 'Date invalide',
       message: 'La date de la soutenance doit être aujourd\'hui ou dans le futur.',
+    })
+    return
+  }
+
+  const membresChoisis = [idPresident.value, idRapporteur.value, idMembreSupplementaire.value].filter(Boolean)
+  if (new Set(membresChoisis).size !== membresChoisis.length) {
+    await alerter({
+      titre: 'Composition du jury invalide',
+      message: 'Une même personne ne peut pas occuper plusieurs rôles dans le même jury. Merci de choisir des membres différents.',
     })
     return
   }
@@ -300,6 +298,24 @@ function ouvrirModification(p: Presentation) {
   reinitialiser()
 }
 
+function dateHeureComplete(p: { date_presentation: string; heure_presentation: string }): Date {
+  return new Date(`${p.date_presentation}T${p.heure_presentation}`)
+}
+
+const soutenancesAVenir = computed(() =>
+  [...(data.value?.presentations ?? [])]
+    .filter((p) => dateHeureComplete(p) >= new Date())
+    .sort((a, b) => dateHeureComplete(a).getTime() - dateHeureComplete(b).getTime())
+    .slice(0, 3)
+)
+
+const soutenancesPassees = computed(() =>
+  [...(data.value?.presentations ?? [])]
+    .filter((p) => dateHeureComplete(p) < new Date())
+    .sort((a, b) => dateHeureComplete(b).getTime() - dateHeureComplete(a).getTime())
+    .slice(0, 3)
+)
+
 async function enregistrerModification() {
   reinitialiser()
   succes.value = ''
@@ -326,6 +342,15 @@ async function enregistrerModification() {
     await alerter({
       titre: 'Date invalide',
       message: 'La date de la soutenance doit être aujourd\'hui ou dans le futur.',
+    })
+    return
+  }
+
+  const membresChoisisEdition = [idPresident.value, idRapporteur.value, idMembreSupplementaire.value].filter(Boolean)
+  if (new Set(membresChoisisEdition).size !== membresChoisisEdition.length) {
+    await alerter({
+      titre: 'Composition du jury invalide',
+      message: 'Une même personne ne peut pas occuper plusieurs rôles dans le même jury. Merci de choisir des membres différents.',
     })
     return
   }
@@ -520,17 +545,31 @@ async function enregistrerModification() {
         </div>
 
         <div class="bg-card border border-slate-200 rounded-lg p-5">
-          <h3 class="font-semibold text-slate-900 text-sm mb-3">Soutenances à venir</h3>
-          <div class="space-y-3">
-            <div v-for="p in soutenancesAVenir" :key="p.id">              
-              <p class="text-sm font-medium text-slate-900 truncate">{{ p.etudiant.prenom }} {{ p.etudiant.nom }}</p>
-              <p class="text-xs text-ink-light">
-                {{ p.date_presentation }} à {{ p.heure_presentation }} — {{ p.salle.numero }}
-              </p>
-            </div>
-            <p v-if="!soutenancesAVenir.length" class="text-xs text-ink-light">Aucune soutenance planifiée.</p>
-          </div>
-        </div>
+  <h3 class="font-semibold text-slate-900 text-sm mb-3">Soutenances à venir</h3>
+  <div class="space-y-3">
+    <div v-for="p in soutenancesAVenir" :key="p.id">
+      <p class="text-sm font-medium text-slate-900 truncate">{{ p.etudiant.prenom }} {{ p.etudiant.nom }}</p>
+      <p class="text-xs text-ink-light">
+        {{ p.date_presentation }} à {{ p.heure_presentation }} — {{ p.salle.numero }}
+      </p>
+    </div>
+    <p v-if="!soutenancesAVenir.length" class="text-xs text-ink-light">Aucune soutenance planifiée.</p>
+  </div>
+</div>
+
+<div class="bg-card border border-slate-200 rounded-lg p-5">
+  <h3 class="font-semibold text-slate-900 text-sm mb-3">Soutenances passées</h3>
+  <div class="space-y-3">
+    <div v-for="p in soutenancesPassees" :key="p.id">
+      <p class="text-sm font-medium text-slate-900 truncate">{{ p.etudiant.prenom }} {{ p.etudiant.nom }}</p>
+      <p class="text-xs text-ink-light">
+        {{ p.date_presentation }} à {{ p.heure_presentation }} — {{ p.salle.numero }}
+      </p>
+      <p v-if="p.note_finale !== null" class="text-xs font-semibold text-accent mt-0.5">{{ p.note_finale }}/20</p>
+    </div>
+    <p v-if="!soutenancesPassees.length" class="text-xs text-ink-light">Aucune soutenance passée.</p>
+  </div>
+</div>
 
         <div class="bg-secondary/5 border border-secondary/20 rounded-lg p-5">
           <p class="text-sm font-medium text-secondary mb-2">Bon à savoir</p>
