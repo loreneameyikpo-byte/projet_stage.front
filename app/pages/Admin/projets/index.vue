@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { useApi } from '~/Composables/useApi'
 import { useConfirmation } from '~/Composables/useConfirmation'
+import Vue3Datatable from '@bhplugin/vue3-datatable'
+import type { IColumnDefinition } from '@bhplugin/vue3-datatable'
+import '@bhplugin/vue3-datatable/dist/style.css'
 
-definePageMeta({ layout: 'dashboard', middleware: 'role' })
-useRoute().meta.roles = ['administrateur', 'super_administrateur']
+definePageMeta({ layout: 'dashboard', middleware: 'role', roles: ['administrateur', 'super_administrateur'] })
 
 const { apiFetch } = useApi()
 const { demander } = useConfirmation()
@@ -93,6 +95,29 @@ async function supprimer(p: Projet) {
     erreurAction.value = e?.data?.message || 'Une erreur est survenue.'
   }
 }
+
+const colonnes = ref<IColumnDefinition[]>([
+  { field: 'projet', title: 'Projet', filter: false, sort: false },
+  { field: 'etudiant', title: 'Étudiant', filter: false, sort: false },
+  { field: 'encadreur', title: 'Encadreur', filter: false, sort: false },
+  { field: 'statut', title: 'Statut', filter: false, sort: false },
+  { field: 'depot', title: 'Dépôt', filter: false, sort: false },
+  { field: 'actions', title: 'Actions', filter: false, sort: false, width: '110px' },
+])
+
+// Vue3Datatable type ses slots en Record<string, unknown> ; cette fonction
+// reconvertit vers notre interface réelle pour retrouver l'autocomplétion
+// et satisfaire le vérificateur de types partout dans les slots ci-dessous.
+function ligne(v: Record<string, unknown>): Projet {
+  return v as unknown as Projet
+}
+
+const taillePage = ref(10)
+const optionsTaillePage = [
+  { value: '10', label: '10 par page' },
+  { value: '20', label: '20 par page' },
+  { value: '50', label: '50 par page' },
+]
 </script>
 
 <template>
@@ -137,72 +162,106 @@ async function supprimer(p: Projet) {
       </div>
     </div>
 
-    <div class="bg-card border border-slate-200 rounded-lg overflow-x-auto opacity-0" :class="estMonte ? 'animate-entree' : ''" style="animation-delay: 140ms">
-      <table class="w-full text-sm">
-        <thead class="bg-slate-50 border-b border-slate-200">
-          <tr class="text-left text-xs font-semibold text-ink-light uppercase tracking-wide">
-            <th class="px-5 py-3">Projet</th>
-            <th class="px-5 py-3">Étudiant</th>
-            <th class="px-5 py-3">Encadreur</th>
-            <th class="px-5 py-3">Statut</th>
-            <th class="px-5 py-3">Dépôt</th>
-            <th class="px-5 py-3 text-right">Actions</th>
-          </tr>
-        </thead>
-        <TransitionGroup tag="tbody" name="ligne" class="divide-y divide-slate-100">
-          <tr v-for="p in projetsFiltres" :key="p.id" class="hover:bg-slate-50/60">
-            <td class="px-5 py-3 font-medium text-slate-900 max-w-xs truncate">{{ p.titre }}</td>
-            <td class="px-5 py-3">
-              <div class="flex items-center gap-2">
-                <span class="w-6 h-6 rounded-full bg-secondary/10 text-secondary text-[10px] font-semibold flex items-center justify-center shrink-0">
-                  {{ p.etudiant.prenom.charAt(0) }}{{ p.etudiant.nom.charAt(0) }}
-                </span>
-                {{ p.etudiant.prenom }} {{ p.etudiant.nom }}
-              </div>
-            </td>
-            <td class="px-5 py-3">
-              <span v-if="p.encadreur" class="text-slate-900">{{ p.encadreur.prenom }} {{ p.encadreur.nom }}</span>
-              <span v-else class="text-warning italic">Non affecté</span>
-            </td>
-            <td class="px-5 py-3">
-              <span class="inline-flex px-2.5 py-1 rounded-full text-xs font-medium" :class="badgesStatuts[p.statut]?.classe">
-                {{ badgesStatuts[p.statut]?.label }}
-              </span>
-            </td>
-            <td class="px-5 py-3 text-ink-light whitespace-nowrap">
-              {{ p.derniere_version?.date_depot ?? '—' }}
-            </td>
-            <td class="px-5 py-3">
-              <div class="flex items-center justify-end gap-2">
-                <NuxtLink
-      :to="`/admin/projets/${p.id}`"
-      class="p-1.5 text-ink-light hover:text-secondary hover:scale-110 active:scale-95 transition"
-      title="Voir le détail"
-    >
-      <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
-        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-      </svg>
-    </NuxtLink>
-                <button type="button" class="p-1.5 text-ink-light hover:text-secondary hover:scale-110 active:scale-95 transition" title="Affecter un encadreur" @click="ouvrirAffectation(p)">
-                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-                  </svg>
-                </button>
-                <button type="button" class="p-1.5 text-ink-light hover:text-danger hover:scale-110 active:scale-95 transition" title="Supprimer" @click="supprimer(p)">
-                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                </button>
-              </div>
-            </td>
-          </tr>
+    <div class="bg-card border border-slate-200 rounded-t-lg overflow-x-auto opacity-0 datatable-projetis" :class="estMonte ? 'animate-entree' : ''" style="animation-delay: 140ms">
+      <Vue3Datatable
+        :rows="projetsFiltres as unknown as Record<string, unknown>[]"
+        :columns="colonnes"
+        :pagination="true"
+        :page-size="taillePage"
+        :show-page-size="false"
+        :show-first-page="false"
+        :show-last-page="false"
+        skin="bh-table-hover"
+        pagination-info="{0} à {1} sur {2} projets"
+      >
+        <template #projet="data">
+          <span class="font-medium text-slate-900 max-w-xs truncate block">{{ ligne(data.value).titre }}</span>
+        </template>
 
-          <tr v-if="!projetsFiltres.length">
-            <td colspan="6" class="px-5 py-10 text-center text-ink-light text-sm">Aucun projet trouvé.</td>
-          </tr>
-        </TransitionGroup>
-      </table>
+        <template #etudiant="data">
+          <div class="flex items-center gap-2">
+            <span class="badge-avatar w-6 h-6 rounded-full bg-secondary/10 text-secondary text-[10px] font-semibold flex items-center justify-center shrink-0">
+              {{ ligne(data.value).etudiant.prenom.charAt(0) }}{{ ligne(data.value).etudiant.nom.charAt(0) }}
+            </span>
+            {{ ligne(data.value).etudiant.prenom }} {{ ligne(data.value).etudiant.nom }}
+          </div>
+        </template>
+
+        <template #encadreur="data">
+          <span v-if="ligne(data.value).encadreur" class="text-slate-900">{{ ligne(data.value).encadreur?.prenom }} {{ ligne(data.value).encadreur?.nom }}</span>
+          <span v-else class="text-warning italic">Non affecté</span>
+        </template>
+
+        <template #statut="data">
+          <span class="badge-filiere inline-flex px-2.5 py-1 rounded-full text-xs font-medium" :class="badgesStatuts[ligne(data.value).statut]?.classe">
+            {{ badgesStatuts[ligne(data.value).statut]?.label }}
+          </span>
+        </template>
+
+        <template #depot="data">
+          <span class="text-ink-light whitespace-nowrap">{{ ligne(data.value).derniere_version?.date_depot ?? '—' }}</span>
+        </template>
+
+        <template #actions="data">
+          <div class="flex items-center justify-end gap-2">
+            <NuxtLink
+              :to="`/admin/projets/${ligne(data.value).id}`"
+              class="p-1.5 text-ink-light hover:text-secondary hover:scale-110 active:scale-95 transition"
+              title="Voir le détail"
+            >
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </NuxtLink>
+            <button type="button" class="p-1.5 text-ink-light hover:text-secondary hover:scale-110 active:scale-95 transition" title="Affecter un encadreur" @click="ouvrirAffectation(ligne(data.value))">
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+              </svg>
+            </button>
+            <button type="button" class="p-1.5 text-ink-light hover:text-danger hover:scale-110 active:scale-95 transition" title="Supprimer" @click="supprimer(ligne(data.value))">
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
+          </div>
+        </template>
+
+        <template #noData>
+          <p class="px-5 py-10 text-center text-ink-light text-sm">Aucun projet trouvé.</p>
+        </template>
+
+        <template #firstArrow>
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M11 19l-7-7 7-7M20 19l-7-7 7-7" />
+          </svg>
+        </template>
+        <template #previousArrow>
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+          </svg>
+        </template>
+        <template #nextArrow>
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+        </template>
+        <template #lastArrow>
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13 5l7 7-7 7M4 5l7 7-7 7" />
+          </svg>
+        </template>
+      </Vue3Datatable>
+    </div>
+
+    <div class="flex items-center justify-end gap-2 bg-card border border-t-0 border-slate-200 rounded-b-lg px-5 py-2.5 relative z-10">
+      <span class="text-xs text-ink-light">Lignes par page</span>
+      <SelectPersonnalise
+        :model-value="String(taillePage)"
+        @update:model-value="(v) => (taillePage = Number(v))"
+        :options="optionsTaillePage"
+        trigger-class="w-32 flex items-center justify-between gap-2 px-2.5 py-1.5 text-xs rounded-lg border border-slate-300 bg-card text-slate-900 focus:outline-none focus:ring-2 focus:ring-secondary"
+      />
     </div>
 
     <Transition name="modale-fondu">
@@ -225,15 +284,6 @@ async function supprimer(p: Projet) {
   animation: entree 0.5s ease-out forwards;
 }
 
-.ligne-enter-active,
-.ligne-leave-active {
-  transition: opacity 0.25s ease;
-}
-.ligne-enter-from,
-.ligne-leave-to {
-  opacity: 0;
-}
-
 .modale-fondu-enter-active,
 .modale-fondu-leave-active {
   transition: opacity 0.2s ease;
@@ -241,5 +291,66 @@ async function supprimer(p: Projet) {
 .modale-fondu-enter-from,
 .modale-fondu-leave-to {
   opacity: 0;
+}
+
+.datatable-projetis :deep(.bh-datatable) {
+  @apply !text-ink !bg-transparent;
+}
+.datatable-projetis :deep(table) {
+  background-color: transparent !important;
+}
+.datatable-projetis :deep(thead),
+.datatable-projetis :deep(th) {
+  @apply !bg-slate-50 !border-b !border-slate-200 !text-ink-light;
+}
+.datatable-projetis :deep(thead th) {
+  @apply !text-ink-light !text-xs !font-semibold uppercase tracking-wide !px-5 !py-3;
+}
+.datatable-projetis :deep(tbody td) {
+  @apply !px-5 !py-3 !text-sm !border-slate-100 !text-slate-700 !bg-card;
+}
+.datatable-projetis :deep(tbody tr),
+.datatable-projetis :deep(tbody tr td),
+.datatable-projetis :deep(tbody tr:nth-child(odd)),
+.datatable-projetis :deep(tbody tr:nth-child(odd) td),
+.datatable-projetis :deep(tbody tr:nth-child(even)),
+.datatable-projetis :deep(tbody tr:nth-child(even) td) {
+  @apply !bg-card;
+}
+.datatable-projetis :deep(tbody tr:hover),
+.datatable-projetis :deep(tbody tr:hover td),
+.datatable-projetis :deep(tbody tr:nth-child(odd):hover),
+.datatable-projetis :deep(tbody tr:nth-child(odd):hover td),
+.datatable-projetis :deep(tbody tr:nth-child(even):hover),
+.datatable-projetis :deep(tbody tr:nth-child(even):hover td) {
+  @apply !bg-secondary !text-white;
+}
+.datatable-projetis :deep(tbody tr:hover) .badge-avatar,
+.datatable-projetis :deep(tbody tr:hover) .badge-filiere {
+  @apply !bg-white/20 !text-white;
+}
+.datatable-projetis :deep(tbody tr:hover) .lien-email {
+  @apply !text-white;
+}
+.datatable-projetis :deep(select) {
+  display: none !important;
+}
+
+.datatable-projetis :deep(.bh-pagination) {
+  @apply !bg-card !border-slate-100 !px-5 !py-3 !text-sm !text-ink-light;
+}
+.datatable-projetis :deep(.bh-pagination button) {
+  @apply !w-8 !h-8 !min-w-0 !flex !items-center !justify-center !rounded-full !text-secondary !bg-transparent !border-0 !font-medium transition-all duration-150;
+}
+.datatable-projetis :deep(.bh-pagination button:hover:not(:disabled)) {
+  @apply !bg-slate-100 !text-primary;
+}
+.datatable-projetis :deep(.bh-pagination button:disabled) {
+  @apply !opacity-30 !cursor-not-allowed;
+}
+.datatable-projetis :deep(.bh-pagination button[aria-current="true"]),
+.datatable-projetis :deep(.bh-pagination .bh-active),
+.datatable-projetis :deep(.bh-pagination button.bh-bg-primary) {
+  @apply !bg-secondary !text-white;
 }
 </style>

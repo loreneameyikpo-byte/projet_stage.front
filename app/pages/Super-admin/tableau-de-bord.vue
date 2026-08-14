@@ -284,7 +284,7 @@ function pourcentage(cle: LibelleStatutKey) {
               :class="estMonte ? 'animate-entree' : ''"
               :style="{ animationDelay: `${520 + i * 80}ms` }"
             >
-              <span class="flex items-center gap-2">
+              <span class="flex items-center gap-2 text-slate-900">
                 <span class="w-2 h-2 rounded-full" :class="libellesStatuts[cle].couleur"></span>
                 {{ libellesStatuts[cle].label }}
               </span>

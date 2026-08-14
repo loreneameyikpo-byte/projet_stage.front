@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useApi } from '~/Composables/useApi'
 import { useFormErrors } from '~/Composables/useFormErrors'
+import { useConfirmation } from '~/Composables/useConfirmation'
 import { computed, ref } from 'vue'
 import { ChevronLeft, CalendarDays, Clock, DoorOpen, Github, FileText, Info } from 'lucide-vue-next'
 
@@ -9,6 +10,7 @@ definePageMeta({ layout: 'dashboard', middleware: 'role', roles: ['jury_externe'
 const route = useRoute()
 const { apiFetch } = useApi()
 const { erreurGenerale, traiter, reinitialiser } = useFormErrors()
+const { demander } = useConfirmation()
 
 interface MembreJury {
   id_utilisateur: string
@@ -95,7 +97,15 @@ async function enregistrer() {
   }
 }
 
-function annuler() {
+async function annuler() {
+  const confirme = await demander({
+    titre: 'Annuler la saisie',
+    message: 'Voulez-vous vraiment annuler ? La note que vous avez tapée sera effacée et non enregistrée.',
+    texteConfirmer: 'Annuler la saisie',
+    dangereux: true,
+  })
+  if (!confirme) return
+
   note.value = monMembre.value?.note_saisie ?? null
   erreurGenerale.value = ''
   succes.value = ''

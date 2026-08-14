@@ -40,16 +40,19 @@ export const useAuthStore = defineStore('auth', {
       return data.utilisateur
     },
 
-    async logout() {
+    async logout(destination: string = '/login') {
       const { apiFetch } = useApi()
       const token = useCookie('auth_token')
 
       try {
         await apiFetch('/logout', { method: 'POST' })
+      } catch {
+        // La session peut déjà être invalide/expirée côté serveur (401) —
+        // ce n'est pas bloquant, on nettoie quand même l'état local.
       } finally {
         token.value = null
         this.utilisateur = null
-        navigateTo('/login')
+        navigateTo(destination)
       }
     },
 
@@ -67,6 +70,8 @@ export const useAuthStore = defineStore('auth', {
     },
 
     redirectionParRole() {
+      console.log('[redirectionParRole]', { utilisateur: this.utilisateur, role: this.utilisateur?.role })
+
       const chemins: Record<string, string> = {
         etudiant: '/etudiant/tableau-de-bord',
         encadreur: '/encadreur/tableau-de-bord',

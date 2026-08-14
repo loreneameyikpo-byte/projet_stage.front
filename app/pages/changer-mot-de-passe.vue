@@ -54,20 +54,9 @@ async function changer() {
       </p>
 
       <form @submit.prevent="changer" class="space-y-4">
-        <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1.5">Mot de passe temporaire</label>
-          <input v-model="motDePasseActuel" type="password" required class="w-full rounded-lg border border-slate-300 bg-card text-slate-900 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-secondary" />
-        </div>
-
-        <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1.5">Nouveau mot de passe</label>
-          <input v-model="nouveauMotDePasse" type="password" required minlength="8" class="w-full rounded-lg border border-slate-300 bg-card text-slate-900 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-secondary" />
-        </div>
-
-        <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1.5">Confirmer le nouveau mot de passe</label>
-          <input v-model="confirmation" type="password" required class="w-full rounded-lg border border-slate-300 bg-card text-slate-900 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-secondary" />
-        </div>
+        <FormInput v-model="motDePasseActuel" label="Mot de passe temporaire" type="password" requis />
+        <FormInput v-model="nouveauMotDePasse" label="Nouveau mot de passe" type="password" requis />
+        <FormInput v-model="confirmation" label="Confirmer le nouveau mot de passe" type="password" requis />
 
         <p v-if="erreur" class="text-sm text-danger">{{ erreur }}</p>
 

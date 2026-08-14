@@ -3,6 +3,9 @@ import { useApi } from '~/Composables/useApi'
 import { useRoute, useAsyncData } from '#imports'
 import { ref, computed, onMounted } from 'vue'
 import { useConfirmation } from '~/Composables/useConfirmation'
+import Vue3Datatable from '@bhplugin/vue3-datatable'
+import type { IColumnDefinition } from '@bhplugin/vue3-datatable'
+import '@bhplugin/vue3-datatable/dist/style.css'
 
 definePageMeta({ layout: 'dashboard', middleware: 'role', roles: ['super_administrateur'] })
 
@@ -146,6 +149,29 @@ async function renvoyerIdentifiants(a: Administrateur) {
     renvoiEnCours.value = null
   }
 }
+
+const colonnes = ref<IColumnDefinition[]>([
+  { field: 'administrateur', title: 'Administrateur', filter: false, sort: false },
+  { field: 'email', title: 'Email', filter: false, sort: false },
+  { field: 'contacts', title: 'Téléphone', filter: false, sort: false },
+  { field: 'statut', title: 'Statut', filter: false, sort: false },
+  { field: 'created_at', title: 'Créé le', filter: false, sort: false },
+  { field: 'actions', title: 'Actions', filter: false, sort: false, width: '130px' },
+])
+
+// Vue3Datatable type ses slots en Record<string, unknown> ; cette fonction
+// reconvertit vers notre interface réelle pour retrouver l'autocomplétion
+// et satisfaire le vérificateur de types partout dans les slots ci-dessous.
+function ligne(v: Record<string, unknown>): Administrateur {
+  return v as unknown as Administrateur
+}
+
+const taillePage = ref(10)
+const optionsTaillePage = [
+  { value: '10', label: '10 par page' },
+  { value: '20', label: '20 par page' },
+  { value: '50', label: '50 par page' },
+]
 </script>
 
 <template>
@@ -192,7 +218,7 @@ async function renvoyerIdentifiants(a: Administrateur) {
     </Transition>
 
     <!-- Recherche -->
-    <div class="relative mb-4 max-w-sm opacity-0" :class="estMonte ? 'animate-entree' : ''" style="animation-delay: 280ms">
+    <div class="relative z-20 mb-4 max-w-sm opacity-0" :class="estMonte ? 'animate-entree' : ''" style="animation-delay: 280ms">
       <BaseIcon name="Search" size="16" class="text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" stroke-width="2" />
       <input
         v-model="recherche"
@@ -203,80 +229,116 @@ async function renvoyerIdentifiants(a: Administrateur) {
     </div>
 
     <!-- Tableau -->
-    <div class="bg-card border border-slate-200 rounded-lg overflow-hidden opacity-0" :class="estMonte ? 'animate-entree' : ''" style="animation-delay: 340ms">
-      <table class="w-full text-sm">
-        <thead class="bg-slate-50 border-b border-slate-200">
-          <tr class="text-left text-xs font-semibold text-ink-light uppercase tracking-wide">
-            <th class="px-5 py-3">Administrateur</th>
-            <th class="px-5 py-3">Email</th>
-            <th class="px-5 py-3">Téléphone</th>
-            <th class="px-5 py-3">Statut</th>
-            <th class="px-5 py-3">Créé le</th>
-            <th class="px-5 py-3 text-right">Actions</th>
-          </tr>
-        </thead>
-        <TransitionGroup tag="tbody" name="ligne" class="divide-y divide-slate-100">
-          <tr v-for="a in administrateursFiltres" :key="a.id" class="hover:bg-slate-50/60">
-            <td class="px-5 py-3">
-              <div class="flex items-center gap-2.5">
-                <span class="w-8 h-8 rounded-full bg-secondary/10 text-secondary text-xs font-semibold flex items-center justify-center shrink-0">
-                  {{ initiales(a) }}
-                </span>
-                <span class="font-medium text-slate-900">{{ a.prenom }} {{ a.nom }}</span>
-              </div>
-            </td>
-            <td class="px-5 py-3 text-secondary">{{ a.email }}</td>
-            <td class="px-5 py-3 text-ink-light">{{ a.contacts ?? '—' }}</td>
-            <td class="px-5 py-3">
-              <button type="button" @click="basculerActif(a)">
-                <span
-                  class="inline-flex px-2.5 py-1 rounded-full text-xs font-medium"
-                  :class="a.actif ? 'bg-accent/10 text-accent' : 'bg-warning/10 text-warning'"
-                >
-                  {{ a.actif ? 'Actif' : 'Inactif' }}
-                </span>
-              </button>
-            </td>
-            <td class="px-5 py-3 text-ink-light">{{ a.created_at }}</td>
-            <td class="px-5 py-3">
-              <div class="flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  class="p-1.5 text-ink-light hover:text-secondary hover:scale-110 active:scale-95 transition"
-                  @click="ouvrirEdition(a)"
-                  title="Modifier"
-                >
-                  <BaseIcon name="Edit2" size="16" stroke-width="2" />
-                </button>
-                <button
-                  type="button"
-                  :disabled="suppressionEnCours === a.id"
-                  @click="supprimer(a)"
-                  class="p-1.5 text-ink-light hover:text-danger hover:scale-110 active:scale-95 transition disabled:opacity-40"
-                  title="Supprimer"
-                >
-                  <BaseIcon name="Trash2" size="16" stroke-width="2" />
-                </button>
-                <button
-                  type="button"
-                  :disabled="renvoiEnCours === a.id"
-                  @click="renvoyerIdentifiants(a)"
-                  class="p-1.5 text-ink-light hover:text-secondary hover:scale-110 active:scale-95 transition disabled:opacity-40"
-                  title="Renvoyer les identifiants"
-                >
-                  <BaseIcon name="Mail" size="16" stroke-width="2" />
-                </button>
-              </div>
-            </td>
-          </tr>
+    <div class="bg-card border border-slate-200 rounded-t-lg overflow-hidden opacity-0 datatable-projetis" :class="estMonte ? 'animate-entree' : ''" style="animation-delay: 340ms">
+      <Vue3Datatable
+        :rows="administrateursFiltres as unknown as Record<string, unknown>[]"
+        :columns="colonnes"
+        :pagination="true"
+        :page-size="taillePage"
+        :show-page-size="false"
+        :show-first-page="false"
+        :show-last-page="false"
+        skin="bh-table-hover"
+        pagination-info="{0} à {1} sur {2} administrateurs"
+      >
+        <template #administrateur="data">
+          <div class="flex items-center gap-2.5">
+            <span class="badge-avatar w-8 h-8 rounded-full bg-secondary/10 text-secondary text-xs font-semibold flex items-center justify-center shrink-0">
+              {{ initiales(ligne(data.value)) }}
+            </span>
+            <span class="font-medium text-slate-900">{{ ligne(data.value).prenom }} {{ ligne(data.value).nom }}</span>
+          </div>
+        </template>
 
-          <tr v-if="!administrateursFiltres.length">
-            <td colspan="6" class="px-5 py-10 text-center text-ink-light text-sm">
-              Aucun administrateur trouvé.
-            </td>
-          </tr>
-        </TransitionGroup>
-      </table>
+        <template #email="data">
+          <span class="lien-email text-secondary">{{ ligne(data.value).email }}</span>
+        </template>
+
+        <template #contacts="data">
+          <span class="text-ink-light">{{ ligne(data.value).contacts ?? '—' }}</span>
+        </template>
+
+        <template #statut="data">
+          <button type="button" @click="basculerActif(ligne(data.value))">
+            <span
+              class="badge-filiere inline-flex px-2.5 py-1 rounded-full text-xs font-medium"
+              :class="ligne(data.value).actif ? 'bg-accent/10 text-accent' : 'bg-warning/10 text-warning'"
+            >
+              {{ ligne(data.value).actif ? 'Actif' : 'Inactif' }}
+            </span>
+          </button>
+        </template>
+
+        <template #created_at="data">
+          <span class="text-ink-light">{{ ligne(data.value).created_at }}</span>
+        </template>
+
+        <template #actions="data">
+          <div class="flex items-center justify-end gap-2">
+            <button
+              type="button"
+              class="p-1.5 text-ink-light hover:text-secondary hover:scale-110 active:scale-95 transition"
+              @click="ouvrirEdition(ligne(data.value))"
+              title="Modifier"
+            >
+              <BaseIcon name="Edit2" size="16" stroke-width="2" />
+            </button>
+            <button
+              type="button"
+              :disabled="suppressionEnCours === ligne(data.value).id"
+              @click="supprimer(ligne(data.value))"
+              class="p-1.5 text-ink-light hover:text-danger hover:scale-110 active:scale-95 transition disabled:opacity-40"
+              title="Supprimer"
+            >
+              <BaseIcon name="Trash2" size="16" stroke-width="2" />
+            </button>
+            <button
+              type="button"
+              :disabled="renvoiEnCours === ligne(data.value).id"
+              @click="renvoyerIdentifiants(ligne(data.value))"
+              class="p-1.5 text-ink-light hover:text-secondary hover:scale-110 active:scale-95 transition disabled:opacity-40"
+              title="Renvoyer les identifiants"
+            >
+              <BaseIcon name="Mail" size="16" stroke-width="2" />
+            </button>
+          </div>
+        </template>
+
+        <template #noData>
+          <p class="px-5 py-10 text-center text-ink-light text-sm">Aucun administrateur trouvé.</p>
+        </template>
+
+        <template #firstArrow>
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M11 19l-7-7 7-7M20 19l-7-7 7-7" />
+          </svg>
+        </template>
+        <template #previousArrow>
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+          </svg>
+        </template>
+        <template #nextArrow>
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+        </template>
+        <template #lastArrow>
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13 5l7 7-7 7M4 5l7 7-7 7" />
+          </svg>
+        </template>
+      </Vue3Datatable>
+    </div>
+
+    <div class="flex items-center justify-end gap-2 bg-card border border-t-0 border-slate-200 rounded-b-lg px-5 py-2.5 relative z-10">
+      <span class="text-xs text-ink-light">Lignes par page</span>
+      <SelectPersonnalise
+        :model-value="String(taillePage)"
+        @update:model-value="(v) => (taillePage = Number(v))"
+        :options="optionsTaillePage"
+        trigger-class="w-32 flex items-center justify-between gap-2 px-2.5 py-1.5 text-xs rounded-lg border border-slate-300 bg-card text-slate-900 focus:outline-none focus:ring-2 focus:ring-secondary"
+      />
     </div>
     <Transition name="modale-fondu">
       <ModaleNouvelAdmin
@@ -298,15 +360,6 @@ async function renvoyerIdentifiants(a: Administrateur) {
   animation: entree 0.5s ease-out forwards;
 }
 
-.ligne-enter-active,
-.ligne-leave-active {
-  transition: opacity 0.25s ease;
-}
-.ligne-enter-from,
-.ligne-leave-to {
-  opacity: 0;
-}
-
 .fondu-enter-active,
 .fondu-leave-active {
   transition: opacity 0.2s ease;
@@ -323,5 +376,66 @@ async function renvoyerIdentifiants(a: Administrateur) {
 .modale-fondu-enter-from,
 .modale-fondu-leave-to {
   opacity: 0;
+}
+
+.datatable-projetis :deep(.bh-datatable) {
+  @apply !text-ink !bg-transparent;
+}
+.datatable-projetis :deep(table) {
+  background-color: transparent !important;
+}
+.datatable-projetis :deep(thead),
+.datatable-projetis :deep(th) {
+  @apply !bg-slate-50 !border-b !border-slate-200 !text-ink-light;
+}
+.datatable-projetis :deep(thead th) {
+  @apply !text-ink-light !text-xs !font-semibold uppercase tracking-wide !px-5 !py-3;
+}
+.datatable-projetis :deep(tbody td) {
+  @apply !px-5 !py-3 !text-sm !border-slate-100 !text-slate-700 !bg-card;
+}
+.datatable-projetis :deep(tbody tr),
+.datatable-projetis :deep(tbody tr td),
+.datatable-projetis :deep(tbody tr:nth-child(odd)),
+.datatable-projetis :deep(tbody tr:nth-child(odd) td),
+.datatable-projetis :deep(tbody tr:nth-child(even)),
+.datatable-projetis :deep(tbody tr:nth-child(even) td) {
+  @apply !bg-card;
+}
+.datatable-projetis :deep(tbody tr:hover),
+.datatable-projetis :deep(tbody tr:hover td),
+.datatable-projetis :deep(tbody tr:nth-child(odd):hover),
+.datatable-projetis :deep(tbody tr:nth-child(odd):hover td),
+.datatable-projetis :deep(tbody tr:nth-child(even):hover),
+.datatable-projetis :deep(tbody tr:nth-child(even):hover td) {
+  @apply !bg-secondary !text-white;
+}
+.datatable-projetis :deep(tbody tr:hover) .badge-avatar,
+.datatable-projetis :deep(tbody tr:hover) .badge-filiere {
+  @apply !bg-white/20 !text-white;
+}
+.datatable-projetis :deep(tbody tr:hover) .lien-email {
+  @apply !text-white;
+}
+.datatable-projetis :deep(select) {
+  display: none !important;
+}
+
+.datatable-projetis :deep(.bh-pagination) {
+  @apply !bg-card !border-slate-100 !px-5 !py-3 !text-sm !text-ink-light;
+}
+.datatable-projetis :deep(.bh-pagination button) {
+  @apply !w-8 !h-8 !min-w-0 !flex !items-center !justify-center !rounded-full !text-secondary !bg-transparent !border-0 !font-medium transition-all duration-150;
+}
+.datatable-projetis :deep(.bh-pagination button:hover:not(:disabled)) {
+  @apply !bg-slate-100 !text-primary;
+}
+.datatable-projetis :deep(.bh-pagination button:disabled) {
+  @apply !opacity-30 !cursor-not-allowed;
+}
+.datatable-projetis :deep(.bh-pagination button[aria-current="true"]),
+.datatable-projetis :deep(.bh-pagination .bh-active),
+.datatable-projetis :deep(.bh-pagination button.bh-bg-primary) {
+  @apply !bg-secondary !text-white;
 }
 </style>

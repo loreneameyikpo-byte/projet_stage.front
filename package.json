@@ -10,12 +10,14 @@
     "postinstall": "nuxt prepare"
   },
   "dependencies": {
+    "@bhplugin/vue3-datatable": "^3.0.0",
     "@intl-tel-input/vue": "^29.1.2",
     "@nuxtjs/tailwindcss": "^6.14.0",
     "@pinia/nuxt": "^1.0.0",
     "lucide-vue-next": "^1.0.0",
     "nuxt": "^4.4.8",
     "pinia": "^4.0.2",
+    "sweetalert2": "^11.26.25",
     "vue": "^3.5.38",
     "vue-router": "^5.1.0"
   }

@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { useAuthStore } from '~/stores/auth'
 import { useConfirmation } from '~/Composables/useConfirmation'
-import { onMounted, ref } from 'vue'
+import { useInactivite } from '~/Composables/useInactivite'
+import { onMounted, onUnmounted, ref } from 'vue'
 
 const authStore = useAuthStore()
 const { demander } = useConfirmation()
@@ -103,10 +104,30 @@ async function seDeconnecter() {
   await authStore.logout()
 }
 
+async function allerAccueil() {
+  const confirme = await demander({
+    titre: 'Retourner à l\'accueil',
+    message: 'Retourner à l\'accueil vous déconnectera de votre session en cours. Voulez-vous continuer ?',
+    texteConfirmer: 'Se déconnecter',
+    dangereux: true,
+  })
+  if (!confirme) return
+
+  await authStore.logout('/')
+}
+
 /* ---------- Animation d'entrée de la barre latérale ---------- */
 const estMonte = ref(false)
+
+/* ---------- Déconnexion automatique après inactivité ---------- */
+const { demarrer: demarrerInactivite, arreter: arreterInactivite } = useInactivite()
+
 onMounted(() => {
   requestAnimationFrame(() => { estMonte.value = true })
+  demarrerInactivite()
+})
+onUnmounted(() => {
+  arreterInactivite()
 })
 </script>
 
@@ -129,16 +150,17 @@ onMounted(() => {
       </div>
 
         <nav class="sidebar-scroll flex-1 px-3 py-4 space-y-1 overflow-y-auto overflow-x-hidden">        
-          <NuxtLink
-            to="/"
-            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 opacity-0 text-white/60 hover:bg-white/5 hover:text-white hover:translate-x-0.5"
+          <button
+            type="button"
+            @click="allerAccueil"
+            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 opacity-0 text-white/60 hover:bg-white/5 hover:text-white hover:translate-x-0.5 w-full text-left"
             :class="estMonte ? 'animate-entree-nav' : ''"
           >
             <BaseIcon name="Home" size="18" stroke-width="2" class="w-5 h-5 shrink-0" />
             <Transition name="libelle">
               <span v-if="!sidebarReduite" class="whitespace-nowrap">Accueil</span>
             </Transition>
-          </NuxtLink>
+          </button>
 
           <NuxtLink
           v-for="(item, i) in itemsNav"
@@ -176,6 +198,7 @@ onMounted(() => {
         <p class="text-sm font-medium text-ink-light">{{ libelleRole[authStore.role ?? ''] }}</p>
 
         <div class="flex items-center gap-3">
+          <NotificationsCloche />
           <ThemeToggle />
 
         <div class="relative" v-click-outside="() => (menuProfilOuvert = false)">
@@ -238,6 +261,8 @@ onMounted(() => {
         </Transition>
       </main>
     </div>
+
+    <ModaleInactivite />
   </div>
 </template>
 
@@ -277,7 +302,7 @@ onMounted(() => {
 
 .page-enter-active,
 .page-leave-active {
-  transition: opacity 0.2s ease;
+  transition: opacity 0.12s ease;
 }
 .page-enter-from,
 .page-leave-to {

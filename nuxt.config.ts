@@ -5,12 +5,13 @@ export default defineNuxtConfig({
   telemetry: false,
   modules: ["@nuxtjs/tailwindcss", "@pinia/nuxt"],
 css: [
+  "sweetalert2/dist/sweetalert2.min.css",
   "~/assets/css/main.css",
   "intl-tel-input/styles"
 ],
   vite: {
     optimizeDeps: {
-      include: ["@vue/devtools-core", "@vue/devtools-kit"],
+      include: ["@vue/devtools-core", "@vue/devtools-kit",'lucide-vue-next',],
     },
   },
   app: {

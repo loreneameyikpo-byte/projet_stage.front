@@ -1,51 +1,40 @@
+// Composables/useConfirmation.ts
+//
+// Même interface qu'avant (demander({...}) -> Promise<boolean>), mais
+// implémentée avec SweetAlert2 au lieu de la modale maison. Aucun des
+// appelants existants (dashboard-layout.vue, presentations.vue, les pages
+// d'évaluation, les tableaux admin...) n'a besoin d'être modifié.
+
+import Swal from 'sweetalert2'
+
 interface OptionsConfirmation {
-  titre?: string
+  titre: string
   message: string
   texteConfirmer?: string
-  texteAnnuler?: string
   dangereux?: boolean
 }
 
-interface EtatConfirmation extends OptionsConfirmation {
-  ouverte: boolean
-  resoudre: ((valeur: boolean) => void) | null
-}
-
-const etat = reactive<EtatConfirmation>({
-  ouverte: false,
-  titre: 'Confirmer',
-  message: '',
-  texteConfirmer: 'Confirmer',
-  texteAnnuler: 'Annuler',
-  dangereux: false,
-  resoudre: null,
-})
-
 export function useConfirmation() {
-  function demander(options: OptionsConfirmation): Promise<boolean> {
-    etat.titre = options.titre ?? 'Confirmer'
-    etat.message = options.message
-    etat.texteConfirmer = options.texteConfirmer ?? 'Confirmer'
-    etat.texteAnnuler = options.texteAnnuler ?? 'Annuler'
-    etat.dangereux = options.dangereux ?? false
-    etat.ouverte = true
-
-    return new Promise((resolve) => {
-      etat.resoudre = resolve
+  async function demander(options: OptionsConfirmation): Promise<boolean> {
+    const resultat = await Swal.fire({
+      title: options.titre,
+      text: options.message,
+      icon: options.dangereux ? 'warning' : 'question',
+      showCancelButton: true,
+      confirmButtonText: options.texteConfirmer ?? 'Confirmer',
+      cancelButtonText: 'Annuler',
+      reverseButtons: true,
+      confirmButtonColor: options.dangereux ? 'rgb(var(--color-danger))' : 'rgb(var(--color-secondary))',
+      cancelButtonColor: 'rgb(var(--slate-300))',
+      background: 'rgb(var(--color-card))',
+      color: 'rgb(var(--color-ink))',
+      customClass: {
+        popup: 'rounded-xl',
+      },
     })
+
+    return resultat.isConfirmed
   }
 
-  function confirmer() {
-    etat.resoudre?.(true)
-    etat.ouverte = false
-    etat.resoudre = null
-  }
-
-  function annuler() {
-    etat.resoudre?.(false)
-    etat.ouverte = false
-    etat.resoudre = null
-  }
-
-  return { demander, etatConfirmation: etat, confirmer, annuler }
+  return { demander }
 }

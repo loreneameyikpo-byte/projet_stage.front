@@ -32,7 +32,7 @@ interface Presentation {
   statut: 'planifiee' | 'terminee'
   etudiant: { nom: string; prenom: string }
   projet: { titre: string }
-  salle: { id_salle: string; numero: string; libelle: string | null }
+  salle: { id: string; numero: string; libelle: string | null }
   jury: { membres: MembreJury[] }
 }
 
@@ -289,7 +289,7 @@ function ouvrirModification(p: Presentation) {
   idPresentationEnEdition.value = p.id
   date.value = p.date_presentation
   heure.value = p.heure_presentation
-  idSalle.value = p.salle.id_salle // vérifie que ce champ existe dans PresentationResource, sinon adapte
+  idSalle.value = p.salle.id
   idPresident.value = p.jury.membres.find(m => m.role_jury === 'president')?.id_utilisateur ?? ''
   idRapporteur.value = p.jury.membres.find(m => m.role_jury === 'rapporteur')?.id_utilisateur ?? ''
   idMembreSupplementaire.value = p.jury.membres.find(m => m.role_jury === 'membre')?.id_utilisateur ?? ''

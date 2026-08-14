@@ -173,8 +173,8 @@ onBeforeUnmount(() => {
         :class="heroMonte ? 'scale-100' : 'scale-105'"
         style="background-image: url('/images/acceuil.jpg')"
       ></div>
-      <!-- Overlay teal -->
-      <div class="absolute inset-0 bg-primary/80"></div>
+      <!-- Overlay sombre fixe (toujours foncé, indépendant du thème clair/sombre) -->
+      <div class="absolute inset-0 bg-[#04121e]/75"></div>
 
       <!-- Motif Cercles -->
       <svg class="absolute inset-0 w-full h-full pointer-events-none" preserveAspectRatio="none" viewBox="0 0 1440 900" xmlns="http://www.w3.org/2000/svg">
@@ -196,7 +196,7 @@ onBeforeUnmount(() => {
       <div class="relative z-10 flex-1 flex items-center">
         <div class="max-w-4xl mx-auto px-6 text-center">
           <p
-            class="text-secondary text-xs font-semibold tracking-widest uppercase mb-4 opacity-0 transition-all duration-700"
+            class="text-sky-300 text-xs font-semibold tracking-widest uppercase mb-4 opacity-0 transition-all duration-700"
             :class="heroMonte ? 'opacity-100 translate-y-0' : 'translate-y-3'"
           >
             La plateforme de gestion des projets de fin de formation
@@ -209,7 +209,7 @@ onBeforeUnmount(() => {
             Bienvenue sur notre<br class="hidden sm:block" /> plateforme
           </h1>
           <p
-            class="text-slate-200 text-base sm:text-lg leading-relaxed max-w-2xl mx-auto mb-10 opacity-0 transition-all duration-700"
+            class="text-white/80 text-base sm:text-lg leading-relaxed max-w-2xl mx-auto mb-10 opacity-0 transition-all duration-700"
             :class="heroMonte ? 'opacity-100 translate-y-0' : 'translate-y-4'"
             style="transition-delay: 200ms"
           >

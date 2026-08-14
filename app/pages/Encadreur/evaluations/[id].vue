@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useApi } from '~/Composables/useApi'
 import { useFormErrors } from '~/Composables/useFormErrors'
+import { useConfirmation } from '~/Composables/useConfirmation'
 
 definePageMeta({ layout: 'dashboard', middleware: 'role', roles: ['encadreur'] })
 
@@ -13,10 +14,8 @@ const { data: stats } = await useAsyncData('encadreur-evaluation-detail', () => 
 
 const evaluation = computed(() => stats.value?.presentations.find((p) => p.id_jury === route.params.id))
 
-const dateEcheance = computed(() => evaluation.value ? new Date(evaluation.value.date_presentation) : null)
-const soutenancePassee = computed(() => dateEcheance.value ? dateEcheance.value < new Date(new Date().toDateString()) : false)
-
 const { erreurGenerale, traiter, reinitialiser } = useFormErrors()
+const { demander } = useConfirmation()
 const note = ref<number | ''>(evaluation.value?.note_saisie ?? '')
 const chargement = ref(false)
 const succes = ref('')
@@ -34,6 +33,20 @@ async function enregistrerNote() {
   } finally {
     chargement.value = false
   }
+}
+
+async function annuler() {
+  const confirme = await demander({
+    titre: 'Annuler la saisie',
+    message: 'Voulez-vous vraiment annuler ? La note que vous avez tapée sera effacée et non enregistrée.',
+    texteConfirmer: 'Annuler la saisie',
+    dangereux: true,
+  })
+  if (!confirme) return
+
+  note.value = evaluation.value?.note_saisie ?? ''
+  erreurGenerale.value = ''
+  succes.value = ''
 }
 
 function labelRole(role: string) {
@@ -73,13 +86,6 @@ function labelRole(role: string) {
     <div class="bg-card border border-slate-200 rounded-lg p-6">
       <h2 class="font-semibold text-slate-900 mb-4">Saisir la note</h2>
 
-      <p v-if="!soutenancePassee" class="flex items-start gap-2 bg-warning/5 border border-warning/20 text-warning text-sm rounded-lg px-3.5 py-2.5 mb-4">
-        <svg class="w-4 h-4 shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
-        </svg>
-        La saisie ne sera possible qu'à partir de la date de la soutenance.
-      </p>
-
       <p class="text-xs text-ink-light mb-3">
         Votre note sera moyennée avec celles des autres membres du jury dès que tous auront saisi leur note.
       </p>
@@ -96,19 +102,27 @@ function labelRole(role: string) {
             min="0"
             max="20"
             step="0.5"
-            :disabled="!soutenancePassee"
             required
-            class="w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-secondary disabled:bg-slate-50 disabled:text-slate-400"
+            class="w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-secondary"
           />
         </div>
 
-        <button
-          type="submit"
-          :disabled="chargement || !soutenancePassee"
-          class="w-full bg-secondary hover:bg-primary text-white text-sm font-medium py-2.5 rounded-lg transition disabled:opacity-50"
-        >
-          {{ chargement ? 'Enregistrement...' : evaluation.note_saisie !== null ? 'Modifier la note' : 'Enregistrer la note' }}
-        </button>
+        <div class="flex items-center gap-3">
+          <button
+            type="submit"
+            :disabled="chargement"
+            class="flex-1 bg-secondary hover:bg-primary text-white text-sm font-medium py-2.5 rounded-lg transition disabled:opacity-50"
+          >
+            {{ chargement ? 'Enregistrement...' : evaluation.note_saisie !== null ? 'Modifier la note' : 'Enregistrer la note' }}
+          </button>
+          <button
+            type="button"
+            @click="annuler"
+            class="text-sm font-medium text-ink-light hover:text-slate-700 transition-colors px-3"
+          >
+            Annuler
+          </button>
+        </div>
       </form>
     </div>
   </div>

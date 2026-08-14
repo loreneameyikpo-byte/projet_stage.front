@@ -2,6 +2,8 @@
 definePageMeta({ layout: false })
 
 import { useFormErrors } from '~/Composables/useFormErrors'
+import { useMasquerChargementGlobal } from '~/Composables/useMasquerChargementGlobal'
+import { useAlerte } from '~/Composables/useAlerte'
 import { onMounted, ref } from 'vue'
 
 const email = ref('')
@@ -12,6 +14,8 @@ const chargement = ref(false)
 
 const authStore = useAuthStore()
 const { erreurGenerale, traiter, reinitialiser } = useFormErrors()
+const masquerChargement = useMasquerChargementGlobal()
+const { alerter } = useAlerte()
 
 async function seConnecter() {
   erreur.value = ''
@@ -27,13 +31,25 @@ async function seConnecter() {
   try {
     await authStore.login(email.value, password.value)
     succes.value = 'Connexion réussie. Redirection en cours...'
-    setTimeout(() => {
-      authStore.redirectionParRole()
-    }, 600)
+    masquerChargement.value = true
+
+    // Petite pause pour laisser le temps au cookie auth_token de bien
+    // s'installer avant la navigation suivante — sans ça, la première
+    // requête de la page suivante (middleware auth.global.ts -> fetchMe)
+    // peut partir sans le token, échouer en 401, et nous renvoyer à /login.
+    await new Promise((resolve) => setTimeout(resolve, 80))
+
+    authStore.redirectionParRole()
   } catch (e: any) {
-    erreur.value = e?.data?.message || 'Identifiants incorrects. Veuillez réessayer.'
-    traiter(e)
-  } finally {
+    if (e?.status === 429 || e?.statusCode === 429) {
+      await alerter({
+        titre: 'Compte temporairement bloqué',
+        message: e?.data?.message || 'Trop de tentatives échouées. Veuillez réessayer dans 15 minutes.',
+      })
+    } else {
+      erreur.value = e?.data?.message || 'Identifiants incorrects. Veuillez réessayer.'
+      traiter(e)
+    }
     chargement.value = false
   }
 }
@@ -60,7 +76,7 @@ onMounted(() => {
         :class="estMonte ? 'scale-100' : 'scale-105'"
         style="background-image: url('/images/login-bg.jpg')"
       ></div>
-      <div class="absolute inset-0 bg-primary/80"></div>
+      <div class="absolute inset-0 bg-[#04121e]/75"></div>
 
       <!-- Motif Cercles -->
       <svg class="absolute inset-0 w-full h-full pointer-events-none" preserveAspectRatio="none" viewBox="0 0 620 800" xmlns="http://www.w3.org/2000/svg">
@@ -100,7 +116,7 @@ onMounted(() => {
           La plateforme de gestion des projets de fin de formation
         </p>
         <p
-          class="text-sm text-slate-100 leading-relaxed max-w-sm mb-10 opacity-0 transition-all duration-700"
+          class="text-sm text-white/80 leading-relaxed max-w-sm mb-10 opacity-0 transition-all duration-700"
           :class="estMonte ? 'opacity-100 translate-y-0' : 'translate-y-3'"
           style="transition-delay: 200ms"
         >
@@ -117,7 +133,7 @@ onMounted(() => {
             <svg class="w-4 h-4 text-white" viewBox="0 0 20 20" fill="currentColor">
               <path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" />
             </svg>
-            <span class="text-xs text-slate-200 font-medium">{{ a.label }}</span>
+            <span class="text-xs text-white/80 font-medium">{{ a.label }}</span>
           </div>
         </div>
       </div>

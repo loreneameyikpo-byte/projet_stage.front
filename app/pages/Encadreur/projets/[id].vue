@@ -2,8 +2,7 @@
 import { useApi } from '~/Composables/useApi';
 import { useFormErrors } from '~/Composables/useFormErrors';
 
-definePageMeta({ layout: 'dashboard', middleware: 'role' })
-useRoute().meta.roles = ['encadreur']
+definePageMeta({ layout: 'dashboard', middleware: 'role', roles: ['encadreur'] })
 
 const route = useRoute()
 const { apiFetch } = useApi()
@@ -54,9 +53,19 @@ function initiales(nom: string, prenom: string) {
 const { erreurGenerale, traiter, reinitialiser } = useFormErrors()
 const observation = ref('')
 const chargement = ref(false)
+const decisionChoisie = ref<'valider' | 'corriger' | null>(null)
 
-async function statuer(decision: 'valider' | 'corriger') {
+function choisirDecision(decision: 'valider' | 'corriger') {
+  decisionChoisie.value = decisionChoisie.value === decision ? null : decision
+}
+
+async function enregistrerDecision() {
   reinitialiser()
+
+  if (!decisionChoisie.value) {
+    erreurGenerale.value = 'Veuillez cocher une décision (valider ou demander des corrections).'
+    return
+  }
   if (!observation.value.trim()) {
     erreurGenerale.value = 'Une observation est obligatoire pour valider ou demander des corrections.'
     return
@@ -66,9 +75,10 @@ async function statuer(decision: 'valider' | 'corriger') {
   try {
     await apiFetch(`/projets/${route.params.id}/valider`, {
       method: 'POST',
-      body: { decision, observation: observation.value },
+      body: { decision: decisionChoisie.value, observation: observation.value },
     })
     observation.value = ''
+    decisionChoisie.value = null
     await refresh()
   } catch (e: any) {
     traiter(e)
@@ -221,30 +231,69 @@ async function statuer(decision: 'valider' | 'corriger') {
             ></textarea>
             <p class="text-xs text-ink-light text-right mt-1">{{ observation.length }}/500</p>
 
+            <!-- Décision : cases à cocher mutuellement exclusives -->
+            <p class="block text-sm font-medium text-slate-700 mt-4 mb-2">Décision</p>
+            <div class="grid sm:grid-cols-2 gap-3">
+              <label
+                class="flex items-start gap-3 rounded-lg border p-3.5 cursor-pointer transition-all"
+                :class="decisionChoisie === 'corriger'
+                  ? 'border-warning bg-warning/5 ring-1 ring-warning/30'
+                  : 'border-slate-200 hover:border-warning/40 hover:bg-warning/5'"
+              >
+                <input
+                  type="checkbox"
+                  :checked="decisionChoisie === 'corriger'"
+                  @change="choisirDecision('corriger')"
+                  class="mt-0.5 w-4 h-4 rounded border-slate-300 text-warning focus:ring-warning/40 shrink-0"
+                />
+                <span>
+                  <span class="flex items-center gap-1.5 text-sm font-medium text-warning">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Demander des corrections
+                  </span>
+                  <span class="block text-xs text-ink-light mt-0.5">L'étudiant devra déposer une nouvelle version.</span>
+                </span>
+              </label>
+
+              <label
+                class="flex items-start gap-3 rounded-lg border p-3.5 cursor-pointer transition-all"
+                :class="decisionChoisie === 'valider'
+                  ? 'border-accent bg-accent/5 ring-1 ring-accent/30'
+                  : 'border-slate-200 hover:border-accent/40 hover:bg-accent/5'"
+              >
+                <input
+                  type="checkbox"
+                  :checked="decisionChoisie === 'valider'"
+                  @change="choisirDecision('valider')"
+                  class="mt-0.5 w-4 h-4 rounded border-slate-300 text-accent focus:ring-accent/40 shrink-0"
+                />
+                <span>
+                  <span class="flex items-center gap-1.5 text-sm font-medium text-accent">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                    Valider le projet
+                  </span>
+                  <span class="block text-xs text-ink-light mt-0.5">Le projet passera au statut "Validé".</span>
+                </span>
+              </label>
+            </div>
+
             <FormAlerte :message="erreurGenerale" />
 
-            <div class="flex items-center justify-between gap-3 mt-3">
+            <div class="flex justify-end mt-4">
               <button
                 type="button"
                 :disabled="chargement"
-                @click="statuer('corriger')"
-                class="inline-flex items-center gap-2 bg-warning/10 hover:bg-warning/20 text-warning text-sm font-medium px-4 py-2 rounded-lg transition disabled:opacity-50"
+                @click="enregistrerDecision"
+                class="inline-flex items-center gap-2 bg-secondary hover:bg-primary text-white text-sm font-medium px-5 py-2.5 rounded-lg transition-all duration-200 hover:-translate-y-0.5 active:scale-95 disabled:opacity-50 disabled:hover:translate-y-0"
               >
                 <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
-                Demander des corrections
-              </button>
-              <button
-                type="button"
-                :disabled="chargement"
-                @click="statuer('valider')"
-                class="inline-flex items-center gap-2 bg-accent hover:bg-green-600 text-white text-sm font-medium px-5 py-2 rounded-lg transition disabled:opacity-50"
-              >
-                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
-                {{ chargement ? 'Envoi...' : 'Valider le projet' }}
+                {{ chargement ? 'Enregistrement...' : 'Enregistrer' }}
               </button>
             </div>
           </div>
