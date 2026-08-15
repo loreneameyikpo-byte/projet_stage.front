@@ -47,7 +47,7 @@ function fermer() {
       @keydown.escape="fermer"
       class="w-full flex items-center justify-between gap-2 text-left transition-all duration-200 disabled:opacity-50"
       :class="triggerClass ?? [
-        'px-3.5 py-2.5 text-sm rounded-lg border bg-card focus:outline-none focus:ring-2',
+        'px-3.5 py-2.5 text-sm rounded-lg border bg-card text-slate-900 focus:outline-none focus:ring-2',
         erreur ? 'border-danger focus:ring-danger/40' : 'border-slate-300 focus:ring-secondary',
       ]"
     >

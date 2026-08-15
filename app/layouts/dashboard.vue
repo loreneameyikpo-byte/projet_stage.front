@@ -29,7 +29,7 @@ const navParRole: Record<string, ItemNav[]> = {
   encadreur: [
     { label: 'Tableau de bord', chemin: '/encadreur/tableau-de-bord', icone: 'Menu' },
     { label: 'Projets à encadrer', chemin: '/encadreur/projets-a-encadrer', icone: 'FileText' },
-    { label: 'Mes évaluations(jury)', chemin: '/encadreur/evaluations', icone: 'CheckCircle' },
+    { label: 'Mes évaluations(juré)', chemin: '/encadreur/evaluations', icone: 'CheckCircle' },
     { label: 'Calendrier', chemin: '/encadreur/calendrier', icone: 'Calendar' },
     { label: 'Profil', chemin: '/profil', icone: 'User' },
 
@@ -38,7 +38,7 @@ const navParRole: Record<string, ItemNav[]> = {
     { label: 'Tableau de bord', chemin: '/admin/tableau-de-bord', icone: 'Menu' },
     { label: 'Étudiants', chemin: '/admin/etudiants', icone: 'Users' },
     { label: 'Encadreurs', chemin: '/admin/encadreurs', icone: 'Users' },
-    { label: 'Jury externes', chemin: '/admin/jury-externes', icone: 'Users' },
+    { label: 'Jurés externes', chemin: '/admin/jury-externes', icone: 'Users' },
     { label: 'Projets', chemin: '/admin/projets', icone: 'FileText' },
     { label: 'Présentations', chemin: '/admin/presentations', icone: 'Calendar' },
     { label: 'Promotions', chemin: '/admin/promotions', icone: 'Users' },
@@ -52,7 +52,7 @@ const navParRole: Record<string, ItemNav[]> = {
     { label: 'Tableau de bord', chemin: '/super-admin/tableau-de-bord', icone: 'Menu' },
     { label: 'Étudiants', chemin: '/admin/etudiants', icone: 'Users' },
     { label: 'Encadreurs', chemin: '/admin/encadreurs', icone: 'Users' },
-    { label: 'Jury externes', chemin: '/admin/jury-externes', icone: 'Users' },
+    { label: 'Jurés externes', chemin: '/admin/jury-externes', icone: 'Users' },
     { label: 'Projets', chemin: '/admin/projets', icone: 'FileText' },
     { label: 'Présentations', chemin: '/admin/presentations', icone: 'Calendar' },
     { label: 'Promotions', chemin: '/admin/promotions', icone: 'Users' },

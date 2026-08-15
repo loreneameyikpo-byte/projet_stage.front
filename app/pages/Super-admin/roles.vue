@@ -2,7 +2,7 @@
 import { useApi } from '~/Composables/useApi'
 import { useRoute, useAsyncData } from '#imports'
 import { ref, reactive, computed, onMounted } from 'vue'
-import { ShieldCheck, Crown } from 'lucide-vue-next'
+import { ShieldCheck, Crown, GraduationCap, Briefcase, Scale } from 'lucide-vue-next'
 
 definePageMeta({ layout: 'dashboard', middleware: 'role', roles: ['super_administrateur'] })
 
@@ -25,13 +25,40 @@ const { data, refresh } = await useAsyncData('roles-permissions', () =>
   apiFetch<ReponseMatrice>('/roles-permissions')
 )
 
-const ongletActif = ref<'administrateur' | 'super_administrateur'>('administrateur')
+// Icône et libellé affiché pour chaque rôle connu — "Scale" (balance) pour le
+// jury externe évoque la délibération/le jugement, plus parlant qu'une icône
+// générique.
+const presentationRoles: Record<string, { label: string; icone: any; couleurBadge: string; couleurTexte: string }> = {
+  etudiant: { label: 'Étudiant', icone: GraduationCap, couleurBadge: 'bg-accent/10', couleurTexte: 'text-accent' },
+  encadreur: { label: 'Encadreur', icone: Briefcase, couleurBadge: 'bg-secondary/10', couleurTexte: 'text-secondary' },
+  administrateur: { label: 'Administrateur', icone: ShieldCheck, couleurBadge: 'bg-secondary/10', couleurTexte: 'text-secondary' },
+  super_administrateur: { label: 'Super Administrateur', icone: Crown, couleurBadge: 'bg-warning/10', couleurTexte: 'text-warning' },
+  jury_externe: { label: 'Jury externe', icone: Scale, couleurBadge: 'bg-primary/10', couleurTexte: 'text-primary' },
+}
 
-// état local modifiable, initialisé depuis la matrice serveur
-const selections = reactive<Record<string, Set<string>>>({
-  administrateur: new Set(data.value?.matrice.administrateur ?? []),
-  super_administrateur: new Set(data.value?.matrice.super_administrateur ?? []),
-})
+function infosRole(libelle: string) {
+  return presentationRoles[libelle] ?? { label: libelle, icone: ShieldCheck, couleurBadge: 'bg-slate-100', couleurTexte: 'text-slate-600' }
+}
+
+// Liste des rôles réellement gérables, dans l'ordre renvoyé par l'API —
+// plus besoin de coder chaque rôle en dur ici.
+const rolesGerables = computed(() => data.value?.roles ?? [])
+
+const ongletActif = ref<string>('')
+
+// état local modifiable, initialisé depuis la matrice serveur pour CHAQUE
+// rôle renvoyé par l'API (et non plus seulement 2 rôles fixes).
+const selections = reactive<Record<string, Set<string>>>({})
+
+function initialiserSelections() {
+  for (const role of rolesGerables.value) {
+    selections[role.libelle] = new Set(data.value?.matrice?.[role.libelle] ?? [])
+  }
+  if (!ongletActif.value && rolesGerables.value.length) {
+    ongletActif.value = rolesGerables.value[0]!.libelle
+  }
+}
+initialiserSelections()
 
 const enregistrement = ref(false)
 const message = ref('')
@@ -41,7 +68,7 @@ onMounted(() => {
   requestAnimationFrame(() => { estMonte.value = true })
 })
 
-function getSelection(role: 'administrateur' | 'super_administrateur') {
+function getSelection(role: string) {
   if (!selections[role]) {
     selections[role] = new Set()
   }
@@ -59,15 +86,17 @@ function basculer(id: string) {
 }
 
 function reinitialiser() {
-  selections.administrateur = new Set(data.value?.matrice?.administrateur ?? [])
-  selections.super_administrateur = new Set(data.value?.matrice?.super_administrateur ?? [])
+  initialiserSelections()
   message.value = ''
 }
 
-const nbPermissions = computed(() => ({
-  administrateur: getSelection('administrateur').size,
-  super_administrateur: getSelection('super_administrateur').size,
-}))
+const nbPermissions = computed(() => {
+  const resultat: Record<string, number> = {}
+  for (const role of rolesGerables.value) {
+    resultat[role.libelle] = getSelection(role.libelle).size
+  }
+  return resultat
+})
 
 async function sauvegarder() {
   const role = data.value?.roles?.find((r) => r.libelle === ongletActif.value)
@@ -83,6 +112,7 @@ async function sauvegarder() {
     })
     message.value = 'Permissions enregistrées avec succès.'
     await refresh()
+    initialiserSelections()
   } finally {
     enregistrement.value = false
   }
@@ -125,25 +155,18 @@ async function sauvegarder() {
       <p v-if="message" class="text-sm text-green-800 mb-4">{{ message }}</p>
     </Transition>
 
-    <!-- Onglets -->
-    <div class="flex items-center gap-2 mb-6 opacity-0" :class="estMonte ? 'animate-entree' : ''" style="animation-delay: 80ms">
+    <!-- Onglets : un par rôle réellement renvoyé par l'API -->
+    <div class="flex items-center gap-2 mb-6 flex-wrap opacity-0" :class="estMonte ? 'animate-entree' : ''" style="animation-delay: 80ms">
       <button
+        v-for="role in rolesGerables"
+        :key="role.id"
         type="button"
-        @click="ongletActif = 'administrateur'"
+        @click="ongletActif = role.libelle"
         class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium transition active:scale-95"
-        :class="ongletActif === 'administrateur' ? 'bg-primary text-white' : 'bg-slate-100 text-ink-light hover:bg-slate-200'"
+        :class="ongletActif === role.libelle ? 'bg-primary text-white' : 'bg-slate-100 text-ink-light hover:bg-slate-200'"
       >
-        <ShieldCheck class="w-4 h-4" />
-        Administrateur
-      </button>
-      <button
-        type="button"
-        @click="ongletActif = 'super_administrateur'"
-        class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium transition active:scale-95"
-        :class="ongletActif === 'super_administrateur' ? 'bg-primary text-white' : 'bg-slate-100 text-ink-light hover:bg-slate-200'"
-      >
-        <Crown class="w-4 h-4" />
-        Super Administrateur
+        <component :is="infosRole(role.libelle).icone" class="w-4 h-4" />
+        {{ infosRole(role.libelle).label }}
       </button>
     </div>
 
@@ -154,9 +177,9 @@ async function sauvegarder() {
           <tr class="text-left text-xs font-semibold text-ink-light uppercase tracking-wide">
             <th class="px-5 py-3">Permission</th>
             <th class="px-5 py-3">Description</th>
-            <th class="px-5 py-3 text-right w-32">
+            <th class="px-5 py-3 text-right w-40">
               <Transition name="fondu" mode="out-in">
-                <span :key="ongletActif">{{ ongletActif === 'administrateur' ? 'Administrateur' : 'Super Administrateur' }}</span>
+                <span :key="ongletActif">{{ infosRole(ongletActif).label }}</span>
               </Transition>
             </th>
           </tr>
@@ -188,24 +211,24 @@ async function sauvegarder() {
       </table>
     </div>
 
-    <!-- Résumé -->
-    <div class="grid sm:grid-cols-2 gap-4">
-      <div class="bg-card rounded-lg p-4 flex items-center gap-4 opacity-0 hover:-translate-y-0.5 hover:shadow-md transition-all duration-300" :class="estMonte ? 'animate-entree' : ''" style="animation-delay: 200ms">
-        <span class="w-11 h-11 rounded-xl bg-secondary/10 text-secondary flex items-center justify-center shrink-0">
-          <ShieldCheck class="w-5.5 h-5.5" />
+    <!-- Résumé : une carte par rôle -->
+    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div
+        v-for="(role, i) in rolesGerables"
+        :key="role.id"
+        class="bg-card rounded-lg p-4 flex items-center gap-4 opacity-0 hover:-translate-y-0.5 hover:shadow-md transition-all duration-300"
+        :class="estMonte ? 'animate-entree' : ''"
+        :style="{ animationDelay: `${200 + i * 60}ms` }"
+      >
+        <span
+          class="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
+          :class="[infosRole(role.libelle).couleurBadge, infosRole(role.libelle).couleurTexte]"
+        >
+          <component :is="infosRole(role.libelle).icone" class="w-5.5 h-5.5" />
         </span>
         <div>
-          <p class="font-semibold text-slate-900">Administrateur</p>
-          <p class="text-sm text-ink-light tabular-nums">{{ nbPermissions.administrateur }} permissions accordées</p>
-        </div>
-      </div>
-      <div class="bg-card rounded-lg p-4 flex items-center gap-4 opacity-0 hover:-translate-y-0.5 hover:shadow-md transition-all duration-300" :class="estMonte ? 'animate-entree' : ''" style="animation-delay: 260ms">
-        <span class="w-11 h-11 rounded-xl bg-warning/10 text-warning flex items-center justify-center shrink-0">
-          <Crown class="w-5.5 h-5.5" />
-        </span>
-        <div>
-          <p class="font-semibold text-slate-900">Super Administrateur</p>
-          <p class="text-sm text-ink-light tabular-nums">{{ nbPermissions.super_administrateur }} permissions accordées</p>
+          <p class="font-semibold text-slate-900">{{ infosRole(role.libelle).label }}</p>
+          <p class="text-sm text-ink-light tabular-nums">{{ nbPermissions[role.libelle] ?? 0 }} permissions accordées</p>
         </div>
       </div>
     </div>

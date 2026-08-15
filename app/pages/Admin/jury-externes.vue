@@ -112,7 +112,7 @@ const optionsTaillePage = [
   <div>
     <div class="flex items-start justify-between mb-6 opacity-0" :class="estMonte ? 'animate-entree' : ''">
       <div>
-        <h1 class="text-2xl font-bold text-slate-900">Gestion du jury externe</h1>
+        <h1 class="text-2xl font-bold text-slate-900">Gestion des Jurés </h1>
         <p class="text-sm text-ink-light mt-1">{{ data?.utilisateurs.length ?? 0 }} membres enregistrés</p>
       </div>
       <button

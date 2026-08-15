@@ -70,6 +70,7 @@ const bareme = [
 ]
 
 const note = ref<number | null>(monMembre.value?.note_saisie ?? null)
+const commentaire = ref<string>((monMembre.value as any)?.commentaire ?? '')
 const enregistrement = ref(false)
 const succes = ref('')
 
@@ -82,11 +83,16 @@ async function enregistrer() {
     return
   }
 
+  if (!commentaire.value.trim()) {
+    erreurGenerale.value = 'Un commentaire est obligatoire pour justifier votre évaluation.'
+    return
+  }
+
   enregistrement.value = true
   try {
     await apiFetch(`/jury/${route.params.id}/note`, {
       method: 'POST',
-      body: { note: note.value },
+      body: { note: note.value, commentaire: commentaire.value },
     })
     succes.value = 'Note enregistrée avec succès.'
     await refresh()
@@ -100,13 +106,14 @@ async function enregistrer() {
 async function annuler() {
   const confirme = await demander({
     titre: 'Annuler la saisie',
-    message: 'Voulez-vous vraiment annuler ? La note que vous avez tapée sera effacée et non enregistrée.',
+    message: 'Voulez-vous vraiment annuler ? La note et le commentaire tapés seront effacés et non enregistrés.',
     texteConfirmer: 'Annuler la saisie',
     dangereux: true,
   })
   if (!confirme) return
 
   note.value = monMembre.value?.note_saisie ?? null
+  commentaire.value = (monMembre.value as any)?.commentaire ?? ''
   erreurGenerale.value = ''
   succes.value = ''
 }
@@ -263,6 +270,18 @@ async function annuler() {
             />
             <span class="text-sm text-ink-light shrink-0">/20</span>
           </div>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1.5">Commentaire <span class="text-danger">*</span></label>
+          <textarea
+            v-model="commentaire"
+            rows="4"
+            maxlength="1000"
+            placeholder="Justifiez votre évaluation : points forts, points à améliorer, remarques sur la présentation..."
+            class="w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-secondary focus:border-secondary transition-all duration-200"
+          ></textarea>
+          <p class="text-xs text-ink-light text-right mt-1">{{ commentaire.length }}/1000</p>
         </div>
 
         <div class="flex items-center gap-3 pt-2">

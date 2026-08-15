@@ -2,17 +2,21 @@
 import { useApi } from '~/Composables/useApi'
 import { useFormErrors } from '~/Composables/useFormErrors'
 import { useConfirmation } from '../../Composables/useConfirmation'
+import { useAlerte } from '~/Composables/useAlerte'
 
 definePageMeta({ layout: 'dashboard', middleware: 'role', roles: ['administrateur', 'super_administrateur'] })
 
 const { apiFetch } = useApi()
 const { demander } = useConfirmation()
+const { alerter } = useAlerte()
 
 const erreurSuppression = ref('')
 
 interface Promotion {
   id: string
-  annee: string
+  libelle: string
+  annee_debut: number | null
+  annee_fin: number | null
   niveau: string
   id_niveau: string
   intitule: string
@@ -47,22 +51,38 @@ const groupesParNiveau = computed(() => {
   return groupes
 })
 
+function periodeAffichee(p: Promotion) {
+  if (!p.annee_debut || !p.annee_fin) return '—'
+  return `${p.annee_debut} - ${p.annee_fin}`
+}
+
 // --- Modale création/édition ---
 const modaleOuverte = ref(false)
 const promotionEnEdition = ref<Promotion | null>(null)
-const intitule = ref('')
-const annee = ref('')
+const libelle = ref('')
+const anneeDebut = ref('')
+const anneeFin = ref('')
 const idNiveau = ref('')
 const optionsNiveaux = computed(
   () => data.value?.niveaux.map((n: { id_niveau: string; libelle: string }) => ({ value: n.id_niveau, label: n.libelle })) ?? []
 )
+
+// Liste déroulante d'années : de 3 ans avant l'année en cours à 6 ans après,
+// largement suffisant pour couvrir les promotions passées et à venir.
+const anneeCourante = new Date().getFullYear()
+const optionsAnnees = Array.from({ length: 10 }, (_, i) => {
+  const annee = anneeCourante - 3 + i
+  return { value: String(annee), label: String(annee) }
+})
+
 const { erreurGenerale, traiter, reinitialiser, champ } = useFormErrors()
 const chargement = ref(false)
 
 function ouvrirCreation() {
   promotionEnEdition.value = null
-  intitule.value = ''
-  annee.value = ''
+  libelle.value = ''
+  anneeDebut.value = ''
+  anneeFin.value = ''
   idNiveau.value = ''
   reinitialiser()
   modaleOuverte.value = true
@@ -70,19 +90,64 @@ function ouvrirCreation() {
 
 function ouvrirEdition(p: Promotion) {
   promotionEnEdition.value = p
-  intitule.value = p.intitule
-  annee.value = p.annee
+  libelle.value = p.libelle
+  anneeDebut.value = p.annee_debut ? String(p.annee_debut) : ''
+  anneeFin.value = p.annee_fin ? String(p.annee_fin) : ''
   idNiveau.value = p.id_niveau
   reinitialiser()
   modaleOuverte.value = true
 }
 
+// Suggère automatiquement l'année de fin à +3 ans quand l'année de début
+// change, pour éviter à l'utilisateur de devoir calculer lui-même l'échéance.
+function surChangementAnneeDebut(valeur: string) {
+  anneeDebut.value = valeur
+  if (!valeur) return
+  anneeFin.value = String(Number(valeur) + 3)
+}
+
+// Le libellé est entièrement déduit des deux années choisies (ex: "2025-2028")
+// — plus besoin de le saisir manuellement.
+watch([anneeDebut, anneeFin], ([debut, fin]) => {
+  libelle.value = debut && fin ? `Promotion ${debut}-${fin}` : ''
+})
+
 async function enregistrer() {
   reinitialiser()
+
+  // Contrôle immédiat côté client, avant même d'appeler l'API : une
+  // promotion doit durer exactement 3 ans. On alerte tout de suite plutôt
+  // que d'attendre l'aller-retour serveur.
+  if (anneeDebut.value && anneeFin.value) {
+    const debut = Number(anneeDebut.value)
+    const fin = Number(anneeFin.value)
+
+    if (fin <= debut) {
+      await alerter({
+        titre: 'Années invalides',
+        message: "L'année de fin doit être postérieure à l'année de début.",
+      })
+      return
+    }
+
+    if (fin - debut !== 3) {
+      await alerter({
+        titre: 'Durée de promotion invalide',
+        message: `Une promotion doit durer exactement 3 ans. D'après l'année de début choisie (${debut}), l'année de fin devrait être ${debut + 3}.`,
+      })
+      return
+    }
+  }
+
   chargement.value = true
 
   try {
-    const body = { annee: annee.value, id_niveau: idNiveau.value }
+    const body = {
+      libelle: libelle.value,
+      annee_debut: anneeDebut.value ? Number(anneeDebut.value) : null,
+      annee_fin: anneeFin.value ? Number(anneeFin.value) : null,
+      id_niveau: idNiveau.value,
+    }
 
     if (promotionEnEdition.value) {
       await apiFetch(`/promotions/${promotionEnEdition.value.id}`, { method: 'PUT', body })
@@ -147,7 +212,7 @@ async function supprimer(p: Promotion) {
       <input
         v-model="recherche"
         type="text"
-        placeholder="Rechercher par nom, niveau ou année..."
+        placeholder="Rechercher par nom, niveau ou libellé..."
         class="w-full pl-9 pr-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary transition-shadow"
       />
     </div>
@@ -163,7 +228,7 @@ async function supprimer(p: Promotion) {
             <thead class="bg-slate-50 border-b border-slate-200">
               <tr class="text-left text-xs font-semibold text-ink-light uppercase tracking-wide">
                 <th class="px-5 py-3">Promotion</th>
-                <th class="px-5 py-3">Année</th>
+                <th class="px-5 py-3">Période</th>
                 <th class="px-5 py-3">Étudiants</th>
                 <th class="px-5 py-3 text-right">Actions</th>
               </tr>
@@ -173,7 +238,7 @@ async function supprimer(p: Promotion) {
                 <td class="px-5 py-3 font-medium text-slate-900">{{ p.intitule }}</td>
                 <td class="px-5 py-3">
                   <span class="inline-flex px-2.5 py-1 rounded-full text-xs font-medium bg-secondary/10 text-secondary">
-                    {{ p.annee }}
+                    {{ periodeAffichee(p) }}
                   </span>
                 </td>
                 <td class="px-5 py-3 text-ink-light">{{ p.nb_etudiants }}</td>
@@ -229,7 +294,40 @@ async function supprimer(p: Promotion) {
                 <p v-if="champ('id_niveau')" class="text-xs text-danger mt-1">{{ champ('id_niveau') }}</p>
               </div>
 
-              <FormInput v-model="annee" label="Année académique" placeholder="2025-2026" :erreur="champ('annee')" requis />
+              <div v-if="libelle" class="bg-secondary/5 border border-secondary/20 rounded-lg px-3.5 py-2.5 text-sm text-secondary font-medium">
+                Libellé : {{ libelle }}
+              </div>
+
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                    Année de début <span class="text-danger">*</span>
+                  </label>
+                  <SelectPersonnalise
+                    :model-value="anneeDebut"
+                    @update:model-value="surChangementAnneeDebut"
+                    :options="optionsAnnees"
+                    placeholder="Sélectionner"
+                    :erreur="champ('annee_debut')"
+                  />
+                  <p v-if="champ('annee_debut')" class="text-xs text-danger mt-1">{{ champ('annee_debut') }}</p>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                    Année de fin <span class="text-danger">*</span>
+                  </label>
+                  <SelectPersonnalise
+                    v-model="anneeFin"
+                    :options="optionsAnnees"
+                    placeholder="Sélectionner"
+                    :erreur="champ('annee_fin')"
+                  />
+                  <p v-if="champ('annee_fin')" class="text-xs text-danger mt-1">{{ champ('annee_fin') }}</p>
+                </div>
+              </div>
+              <p class="text-xs text-ink-light -mt-2">
+                Une promotion dure exactement 3 ans — l'année de fin est suggérée automatiquement à partir de l'année de début.
+              </p>
 
               <div class="flex items-center justify-end gap-4 pt-3 border-t border-slate-100">
                 <button type="button" @click="modaleOuverte = false" class="text-sm font-medium text-secondary hover:text-primary">
@@ -240,7 +338,7 @@ async function supprimer(p: Promotion) {
                   :disabled="chargement"
                   class="bg-secondary hover:bg-primary text-white text-sm font-medium px-5 py-2 rounded-lg transition active:scale-95 disabled:opacity-50"
                 >
-                  {{ chargement ? 'Enregistrement...' : 'Créer' }}
+                  {{ chargement ? 'Enregistrement...' : (promotionEnEdition ? 'Enregistrer' : 'Créer') }}
                 </button>
               </div>
             </form>
