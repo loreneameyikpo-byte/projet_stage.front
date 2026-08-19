@@ -1,7 +1,7 @@
 <template>
   <div>
-    <!-- <ChargementGlobal /> 
-    <ModaleConfirmation />
+     <ChargementGlobal /> 
+    <!--<ModaleConfirmation />
     <AlerteDialog />-->
       <ModaleInactivite />
     <NuxtLayout>

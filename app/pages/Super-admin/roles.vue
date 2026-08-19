@@ -33,7 +33,7 @@ const presentationRoles: Record<string, { label: string; icone: any; couleurBadg
   encadreur: { label: 'Encadreur', icone: Briefcase, couleurBadge: 'bg-secondary/10', couleurTexte: 'text-secondary' },
   administrateur: { label: 'Administrateur', icone: ShieldCheck, couleurBadge: 'bg-secondary/10', couleurTexte: 'text-secondary' },
   super_administrateur: { label: 'Super Administrateur', icone: Crown, couleurBadge: 'bg-warning/10', couleurTexte: 'text-warning' },
-  jury_externe: { label: 'Jury externe', icone: Scale, couleurBadge: 'bg-primary/10', couleurTexte: 'text-primary' },
+  jury_externe: { label: 'Juré externe', icone: Scale, couleurBadge: 'bg-primary/10', couleurTexte: 'text-primary' },
 }
 
 function infosRole(libelle: string) {
