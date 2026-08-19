@@ -45,8 +45,11 @@ css: [
   },
   runtimeConfig: {
     public: {
+      // Nuxt fait automatiquement correspondre cette clé à la variable
+      // d'environnement NUXT_PUBLIC_API_BASE_URL si elle existe (sur
+      // Vercel notamment) — pas besoin d'écrire process.env ici, cette
+      // valeur ne sert que de repli en développement local.
       apiBaseUrl: "http://localhost:8000/api",
-      //apiBase: "http://localhost:8000",
     },
   },
 })
