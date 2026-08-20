@@ -36,6 +36,11 @@ export function useApi() {
       query: options.query as Record<string, any> | undefined,
       headers: {
         Accept: "application/json",
+        // Contourne la page d'avertissement intermédiaire de ngrok (offre
+        // gratuite), qui n'a pas les bons en-têtes CORS et bloquait
+        // certains appels de façon apparemment aléatoire selon l'ordre
+        // d'arrivée des requêtes.
+        "ngrok-skip-browser-warning": "true",
         ...(isFormData ? {} : { "Content-Type": "application/json" }),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...options.headers,
