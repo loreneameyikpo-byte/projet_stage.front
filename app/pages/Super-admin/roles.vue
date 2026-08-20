@@ -198,7 +198,7 @@ async function sauvegarder() {
                 :aria-checked="estActive(p.id_permission)"
                 @click="basculer(p.id_permission)"
                 class="relative inline-flex h-6 w-11 items-center rounded-full transition"
-                :class="estActive(p.id_permission) ? 'bg-green-900' : 'bg-slate-300'"
+                :class="estActive(p.id_permission) ? 'bg-green-800' : 'bg-slate-300'"
               >
                 <span
                   class="inline-block h-4 w-4 transform rounded-full bg-white transition"
