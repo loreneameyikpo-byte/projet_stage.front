@@ -77,7 +77,7 @@ watch(stats, () => {
   <div>
     <h1 class="text-2xl font-bold text-slate-900">Tableau de bord</h1>
     <p class="text-sm text-secondary mt-1 mb-6">
-      Bienvenue, {{ authStore.utilisateur?.prenom }} {{ authStore.utilisateur?.nom }}{{ stats?.specialite ? ' — ' + stats.specialite : '' }}
+      Bienvenue, {{ authStore.utilisateur?.prenom }} {{ authStore.utilisateur?.nom }}{{ stats?.specialite ? ' - ' + stats.specialite : '' }}
     </p>
 
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">

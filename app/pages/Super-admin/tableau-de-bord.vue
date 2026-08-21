@@ -163,7 +163,7 @@ function pourcentage(cle: LibelleStatutKey) {
 <template>
   <div>
     <h1 class="text-2xl font-bold text-slate-900">Tableau de bord global</h1>
-    <p class="text-sm text-ink-light mt-1 mb-6">Vue consolidée — toutes promotions et filières</p>
+    <p class="text-sm text-ink-light mt-1 mb-6">Vue consolidée - toutes promotions et filières</p>
 
     <!-- Cartes indicateurs -->
     <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
@@ -238,7 +238,7 @@ function pourcentage(cle: LibelleStatutKey) {
               class="fill-current text-secondary transition-all duration-500"
               :style="{ opacity: estMonte ? 1 : 0, transitionDelay: `${700 + i * 70}ms` }"
             >
-              <title>{{ donneesPromo[i]?.intitule }} — {{ donneesPromo[i]?.nb_projets ?? 0 }} projet(s)</title>
+              <title>{{ donneesPromo[i]?.intitule }} - {{ donneesPromo[i]?.nb_projets ?? 0 }} projet(s)</title>
             </circle>
             <circle :cx="p.x" :cy="p.y" r="8" class="fill-current text-secondary" :style="{ opacity: 0.12 }" />
           </g>

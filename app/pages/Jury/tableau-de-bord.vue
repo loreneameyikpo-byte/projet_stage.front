@@ -74,7 +74,7 @@ watch(stats, () => {
   <div>
     <h1 class="text-2xl font-bold text-slate-900">Tableau de bord</h1>
     <p class="text-sm text-secondary mt-1 mb-6">
-      Bienvenue, {{ authStore.utilisateur?.prenom }} {{ authStore.utilisateur?.nom }}{{ stats?.specialite ? ' — ' + stats.specialite : '' }}
+      Bienvenue, {{ authStore.utilisateur?.prenom }} {{ authStore.utilisateur?.nom }}{{ stats?.specialite ? ' - ' + stats.specialite : '' }}
     </p>
 
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -123,7 +123,7 @@ watch(stats, () => {
           >
             <td class="px-5 py-3 font-medium text-slate-900">{{ p.etudiant }}</td>
             <td class="px-5 py-3 text-ink-light max-w-xs truncate">{{ p.projet_titre }}</td>
-            <td class="px-5 py-3 text-ink-light">{{ p.date_presentation }} — {{ p.heure_presentation }}</td>
+            <td class="px-5 py-3 text-ink-light">{{ p.date_presentation }} - {{ p.heure_presentation }}</td>
             <td class="px-5 py-3">
               <span class="inline-flex px-2 py-0.5 rounded-full text-[11px] font-medium bg-secondary/10 text-secondary">{{ labelRole(p.role_jury) }}</span>
             </td>

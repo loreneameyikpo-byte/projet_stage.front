@@ -49,7 +49,7 @@ onMounted(() => {
   <div>
     <h1 class="text-2xl font-bold text-slate-900">Tableau de bord</h1>
     <p class="text-sm text-secondary mt-1 mb-6">
-      Bienvenue, {{ authStore.utilisateur?.prenom }}{{ data?.promotion ? ' — ' + data.promotion : '' }}
+      Bienvenue, {{ authStore.utilisateur?.prenom }}{{ data?.promotion ? ' - ' + data.promotion : '' }}
     </p>
 
     <!-- Aucun projet -->
@@ -131,7 +131,7 @@ onMounted(() => {
               <div>
                 <p class="text-sm font-medium text-slate-900">{{ projet.presentation.date_presentation }}</p>
                 <p class="text-xs text-ink-light">
-                  {{ projet.presentation.heure_presentation }} — {{ projet.presentation.salle }}{{ projet.presentation.salle_libelle ? ' — ' + projet.presentation.salle_libelle : '' }}
+                  {{ projet.presentation.heure_presentation }} - {{ projet.presentation.salle }}{{ projet.presentation.salle_libelle ? ' - ' + projet.presentation.salle_libelle : '' }}
                 </p>
               </div>
             </div>
@@ -178,7 +178,7 @@ onMounted(() => {
             </span>
             <div>
               <p class="font-semibold text-slate-900">{{ formaterMontant(projet.paiement.montant) }} FCFA</p>
-              <p class="text-xs text-ink-light">Frais d'encadrement{{ data?.promotion ? ' — ' + data.promotion : '' }}</p>
+              <p class="text-xs text-ink-light">Frais d'encadrement{{ data?.promotion ? ' - ' + data.promotion : '' }}</p>
             </div>
           </div>
 

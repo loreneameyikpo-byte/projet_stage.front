@@ -214,7 +214,7 @@ function pourcentage(cle: string) {
           >
             <div class="min-w-0">
               <p class="text-sm font-medium text-slate-900 truncate">{{ p.titre }}</p>
-              <p class="text-xs text-ink-light">{{ p.etudiant }} — {{ p.promotion }}</p>
+              <p class="text-xs text-ink-light">{{ p.etudiant }} - {{ p.promotion }}</p>
             </div>
             <span
               class="shrink-0 inline-flex px-2.5 py-1 rounded-full text-xs font-medium"
