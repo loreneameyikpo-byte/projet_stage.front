@@ -3,6 +3,7 @@ import { useAuthStore } from '~/stores/auth'
 import { useConfirmation } from '~/Composables/useConfirmation'
 import { useInactivite } from '~/Composables/useInactivite'
 import { onMounted, onUnmounted, ref } from 'vue'
+import { History } from 'lucide-vue-next'
 
 const authStore = useAuthStore()
 const { demander } = useConfirmation()
@@ -63,6 +64,7 @@ const navParRole: Record<string, ItemNav[]> = {
     { label: 'Rôles et permissions', chemin: '/super-admin/roles', icone: 'Shield' },
     { label: 'Paramètres système', chemin: '/super-admin/parametres', icone: 'Settings' },
     //{ label: 'Rapports consolidés', chemin: '/super-admin/rapports', icone: 'BarChart2' },
+    { label: 'Historique', chemin: '/super-admin/historique', icone: 'History' },
     { label: 'Profil', chemin: '/profil', icone: 'User' },
   
   ],
