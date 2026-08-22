@@ -18,6 +18,7 @@ interface Encadreur {
   email: string
   contacts: string | null
   specialite: string | null
+  cree_par: string | null
 }
 
 const { data: rolesMap } = await useRoles()
@@ -90,6 +91,7 @@ const colonnes = ref<IColumnDefinition[]>([
   { field: 'email', title: 'Email', filter: false, sort: false },
   { field: 'specialite', title: 'Spécialité', filter: false, sort: false },
   { field: 'contacts', title: 'Téléphone', filter: false, sort: false },
+  { field: 'cree_par', title: 'Créé par', filter: false, sort: false },
   { field: 'actions', title: 'Actions', filter: false, sort: false, width: '110px' },
 ])
 
@@ -175,6 +177,10 @@ const optionsTaillePage = [
 
         <template #contacts="data">
           <span class="text-ink-light">{{ ligne(data.value).contacts ?? '—' }}</span>
+        </template>
+
+        <template #cree_par="data">
+          <span class="text-ink-light">{{ ligne(data.value).cree_par ?? '—' }}</span>
         </template>
 
         <template #actions="data">

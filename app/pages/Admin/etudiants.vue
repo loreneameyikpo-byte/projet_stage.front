@@ -20,6 +20,7 @@ interface Etudiant {
   contacts: string | null
   promotion?: { id: string; intitule: string } | null
   specialite: string | null
+  cree_par: string | null
 }
 
 const { data: rolesMap } = await useRoles()
@@ -118,6 +119,7 @@ const colonnes = ref<IColumnDefinition[]>([
   { field: 'email', title: 'Email', filter: false, sort: false, headerClass: '!bg-slate-50 !text-ink-light', cellClass: '!bg-card' },
   { field: 'promotion', title: 'Promotion', filter: false, sort: false, headerClass: '!bg-slate-50 !text-ink-light', cellClass: '!bg-card' },
   { field: 'filiere', title: 'Filière', filter: false, sort: false, headerClass: '!bg-slate-50 !text-ink-light', cellClass: '!bg-card' },
+  { field: 'cree_par', title: 'Créé par', filter: false, sort: false, headerClass: '!bg-slate-50 !text-ink-light', cellClass: '!bg-card' },
   { field: 'actions', title: 'Actions', filter: false, sort: false, width: '110px', headerClass: '!bg-slate-50 !text-ink-light', cellClass: '!bg-card' },
 ])
 
@@ -213,6 +215,10 @@ const optionsTaillePage = [
           <span v-else class="text-ink-light">—</span>
         </template>
 
+        <template #cree_par="data">
+          <span class="text-ink-light">{{ ligne(data.value).cree_par ?? '—' }}</span>
+        </template>
+
         <template #actions="data">
           <div class="flex items-center justify-end gap-2">
             <button type="button" class="p-1.5 text-ink-light hover:text-secondary hover:scale-110 active:scale-95 transition" @click="ouvrirEdition(ligne(data.value))">
@@ -299,13 +305,6 @@ const optionsTaillePage = [
   opacity: 0;
 }
 
-/*
-  Adaptation au thème pour vue3-datatable. La librairie compile Tailwind
-  avec le préfixe "bh-" sur toutes ses classes (bh-flex, bh-text-sm...) et
-  n'utilise PAS de <nav> pour la pagination — c'est un simple <div
-  class="bh-pagination">. Sélecteurs vérifiés directement dans l'inspecteur
-  du navigateur, plus fiables que les suppositions précédentes.
-*/
 .datatable-projetis :deep(.bh-datatable) {
   @apply !text-ink !bg-transparent;
 }
@@ -338,9 +337,6 @@ const optionsTaillePage = [
 .datatable-projetis :deep(tbody tr:nth-child(even):hover td) {
   @apply !bg-secondary !text-white;
 }
-/* Les badges/liens utilisent une teinte bleue (text-secondary, bg-secondary/10)
-   pour ressortir sur un fond neutre — sur la ligne survolée (fond bleu plein),
-   on les repasse en blanc pour rester lisibles. */
 .datatable-projetis :deep(tbody tr:hover) .badge-avatar,
 .datatable-projetis :deep(tbody tr:hover) .badge-filiere {
   @apply !bg-white/20 !text-white;
@@ -348,19 +344,13 @@ const optionsTaillePage = [
 .datatable-projetis :deep(tbody tr:hover) .lien-email {
   @apply !text-white;
 }
-/* Filet de sécurité : masque tout <select> natif que la librairie
-   afficherait malgré show-page-size="false", pour ne laisser que notre
-   propre SelectPersonnalise en dessous du tableau. */
 .datatable-projetis :deep(select) {
   display: none !important;
 }
 
-/* Barre de pagination : c'est un <div class="bh-pagination">, pas un <nav> */
 .datatable-projetis :deep(.bh-pagination) {
   @apply !bg-card !border-slate-100 !px-5 !py-3 !text-sm !text-ink-light;
 }
-
-/* Numéros de page en cercles discrets ; page active en cercle plein. */
 .datatable-projetis :deep(.bh-pagination button) {
   @apply !w-8 !h-8 !min-w-0 !flex !items-center !justify-center !rounded-full !text-secondary !bg-transparent !border-0 !font-medium transition-all duration-150;
 }
@@ -374,5 +364,5 @@ const optionsTaillePage = [
 .datatable-projetis :deep(.bh-pagination .bh-active),
 .datatable-projetis :deep(.bh-pagination button.bh-bg-primary) {
   @apply !bg-secondary !text-white;
-} 
+}
 </style>
