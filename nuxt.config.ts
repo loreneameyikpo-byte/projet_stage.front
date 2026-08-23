@@ -16,7 +16,7 @@ css: [
   },
   app: {
     head: {
-      title: "Projetis — Gestion de Projets de fin de formation",
+      title: "Projetis - Gestion de Projets de fin de formation",
       link: [
         { rel: "preconnect", href: "https://fonts.googleapis.com" },
         {
